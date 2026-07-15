@@ -1,0 +1,29 @@
+[
+  {
+    "id": "chant_salve",
+    "origUrl": "https://upload.wikimedia.org/wikipedia/commons/4/46/Petits_Chanteurs_de_Passy_-_Salve_Regina_de_Hermann_Contract.ogg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Petits_Chanteurs_de_Passy_-_Salve_Regina_de_Hermann_Contract.ogg",
+    "license": "CC BY-SA 3.0",
+    "artist": "Les Petits Chanteurs de Passy",
+    "localPath": "/audio/chant_salve.mp3",
+    "sizeBytes": 4898220
+  },
+  {
+    "id": "chant_avemaria",
+    "origUrl": "https://upload.wikimedia.org/wikipedia/commons/2/23/Schola_Gregoriana-Ave_Maria.ogg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Schola_Gregoriana-Ave_Maria.ogg",
+    "license": "CC BY-SA 3.0",
+    "artist": "Schola Gregoriana",
+    "localPath": "/audio/chant_avemaria.mp3",
+    "sizeBytes": 1691709
+  },
+  {
+    "id": "chant_venicreator",
+    "origUrl": "https://upload.wikimedia.org/wikipedia/commons/0/01/Veni.creator.spiritus.ogg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Veni.creator.spiritus.ogg",
+    "license": "Public domain",
+    "artist": "Membeth",
+    "localPath": "/audio/chant_venicreator.mp3",
+    "sizeBytes": 823849
+  }
+]

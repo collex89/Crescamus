@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="goldGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#E9C46A"/>
+      <stop offset="1" stop-color="#C4991C"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Star of Bethlehem -->
+  <path fill="url(#goldGrad)" d="M100 4 C102.5 19 104.5 21 118 23.5 C104.5 26 102.5 28 100 43 C97.5 28 95.5 26 82 23.5 C95.5 21 97.5 19 100 4 Z"/>
+  <path fill="url(#goldGrad)" opacity="0.85" d="M100 14 L103 21 L110 23.5 L103 26 L100 33 L97 26 L90 23.5 L97 21 Z" transform="rotate(45 100 23.5)"/>
+
+  <!-- C ring (open on the right) -->
+  <path d="M134 76 A54 54 0 1 0 134 156" fill="none" stroke="#1E3A8A" stroke-width="16" stroke-linecap="round"/>
+
+  <!-- Cross -->
+  <rect x="93" y="58" width="14" height="82" rx="3.5" fill="url(#goldGrad)"/>
+  <rect x="71" y="84" width="58" height="14" rx="3.5" fill="url(#goldGrad)"/>
+
+  <!-- Open book, nested inside the C -->
+  <g>
+    <path d="M100 146 C90 137 76 134 64 137 L64 150 C76 147 90 150 100 159 C110 150 124 147 136 150 L136 137 C124 134 110 137 100 146 Z" fill="#1E3A8A"/>
+    <path d="M100 142 C91 134 78 132 67 134 L67 139 C78 137 91 139 100 147 C109 139 122 137 133 139 L133 134 C122 132 109 134 100 142 Z" fill="url(#goldGrad)"/>
+    <rect x="98.75" y="141" width="2.5" height="17" rx="1.25" fill="#FAFAF8"/>
+  </g>
+</svg>

@@ -1,0 +1,41 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Secrets — never commit your Supabase keys
+.env
+.env.*
+!.env.example
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+.vercel
+
+# Supabase CLI local cache (machine-specific, not project config)
+supabase/.temp
+
+# Working/scratch files — not meant for version control
+scripts/*.bak
+scripts/*.bak2
+scripts/dr_source.txt
+scripts/parse-report.txt
+scripts_tmp_dr_source.txt
