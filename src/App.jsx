@@ -11,6 +11,8 @@ import { downloadVerseImage } from './lib/verseImage';
 
 // A curated set for the composer's emoji picker — everyday expression plus
 // faith-relevant symbols, not the full unicode emoji set.
+const MAX_COMPOSER_VIDEO_BYTES = 50 * 1024 * 1024; // 50MB — generous for a short clip, cheap to fail fast on client rather than mid-upload
+
 const COMPOSER_EMOJIS = [
   '🙏', '❤️', '✝️', '🕊️', '😊', '😇', '🙌', '✨', '🌟', '⭐',
   '😢', '🥹', '😭', '🤗', '💪', '🙇', '😅', '😂', '🥳', '😍',
@@ -449,7 +451,7 @@ export default function App() {
   const [usernameStatus, setUsernameStatus] = useState({ state: 'idle', message: '' });
   const [newPostText, setNewPostText] = useState('');
   const [composerOpen, setComposerOpen] = useState(false);
-  const [composerImage, setComposerImage] = useState(null); // { file, preview } | null
+  const [composerMedia, setComposerMedia] = useState(null); // { file, preview, type: 'image' | 'video' } | null
   const [composerPosting, setComposerPosting] = useState(false);
   const [composerError, setComposerError] = useState('');
   const [composerPreview, setComposerPreview] = useState(false);
@@ -1157,29 +1159,37 @@ export default function App() {
     setComposerOpen(true);
   };
 
-  const handleComposerImageChange = (e) => {
+  const handleComposerMediaChange = (e) => {
     const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file after removing it
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setComposerImage({ file, preview: reader.result });
-    reader.readAsDataURL(file);
+    const isVideo = file.type.startsWith('video/');
+    if (isVideo && file.size > MAX_COMPOSER_VIDEO_BYTES) {
+      setComposerError(`Video is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Max size is ${MAX_COMPOSER_VIDEO_BYTES / (1024 * 1024)}MB.`);
+      return;
+    }
+    setComposerError('');
+    // Object URLs (not FileReader/base64) — a video can be tens of MB, and
+    // base64-encoding it in memory just to preview it is wasteful.
+    setComposerMedia({ file, preview: URL.createObjectURL(file), type: isVideo ? 'video' : 'image' });
   };
 
   const handleCreatePost = async () => {
     const text = newPostText.trim();
-    if (!text && !composerImage) return;
+    if (!text && !composerMedia) return;
 
     setComposerError('');
     setComposerPosting(true);
     try {
       if (isSupabaseConfigured && session) {
         let imageUrl = null;
-        if (composerImage) {
-          const { url, error } = await api.uploadPostImage(session.user.id, composerImage.file);
-          if (error) { setComposerError(`Could not upload image: ${error.message}`); return; }
-          imageUrl = url;
+        let videoUrl = null;
+        if (composerMedia) {
+          const { url, error } = await api.uploadPostMedia(session.user.id, composerMedia.file);
+          if (error) { setComposerError(`Could not upload ${composerMedia.type}: ${error.message}`); return; }
+          if (composerMedia.type === 'video') videoUrl = url; else imageUrl = url;
         }
-        const { post, error } = await api.createPost(text, imageUrl);
+        const { post, error } = await api.createPost(text, imageUrl, videoUrl);
         if (error) { setComposerError(error.message); return; }
         if (post) setPosts(prev => [{ ...post, isLiked: false, isBookmarked: false }, ...prev]);
       } else {
@@ -1198,7 +1208,8 @@ export default function App() {
           },
           time: 'Just now',
           text,
-          image: composerImage?.preview || null,
+          image: composerMedia?.type === 'image' ? composerMedia.preview : null,
+          video: composerMedia?.type === 'video' ? composerMedia.preview : null,
           likes: 0,
           commentsCount: 0,
           comments: [],
@@ -1207,7 +1218,7 @@ export default function App() {
         }, ...prev]);
       }
       setNewPostText('');
-      setComposerImage(null);
+      setComposerMedia(null);
       setComposerOpen(false);
     } finally {
       setComposerPosting(false);
@@ -2408,7 +2419,8 @@ export default function App() {
                             <span style={{ fontWeight: 600, fontSize: '12px' }}>{post.user.name}</span>
                             <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{post.time}</span>
                           </div>
-                          <div style={{ fontSize: '12.5px', color: 'var(--text)', marginBottom: post.image ? '10px' : 0 }}>{renderFormattedText(post.text)}</div>
+                          <div style={{ fontSize: '12.5px', color: 'var(--text)', marginBottom: (post.image || post.video) ? '10px' : 0 }}>{renderFormattedText(post.text)}</div>
+                          {post.video && <video src={post.video} className="feed-image" controls playsInline style={{ marginBottom: 0 }} />}
                           {post.image && <img src={post.image} className="feed-image" alt="post content" style={{ marginBottom: 0 }} />}
                         </div>
                       ))
@@ -2508,7 +2520,7 @@ export default function App() {
                   <h3>New Post</h3>
                   <button
                     className="composer-post-btn"
-                    disabled={(!newPostText.trim() && !composerImage) || composerPosting}
+                    disabled={(!newPostText.trim() && !composerMedia) || composerPosting}
                     onClick={handleCreatePost}
                   >
                     {composerPosting ? 'Posting...' : 'Post'}
@@ -2581,10 +2593,14 @@ export default function App() {
                       />
                     )}
                   </div>
-                  {composerImage && (
+                  {composerMedia && (
                     <div className="composer-image-preview">
-                      <img src={composerImage.preview} alt="Attachment preview" />
-                      <button className="composer-image-remove" onClick={() => setComposerImage(null)}>
+                      {composerMedia.type === 'video' ? (
+                        <video src={composerMedia.preview} controls playsInline />
+                      ) : (
+                        <img src={composerMedia.preview} alt="Attachment preview" />
+                      )}
+                      <button className="composer-image-remove" onClick={() => setComposerMedia(null)}>
                         <Icons.Close />
                       </button>
                     </div>
@@ -2596,7 +2612,7 @@ export default function App() {
                 <div className="composer-toolbar">
                   <label className="composer-attach-btn">
                     <Icons.Image />
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleComposerImageChange} />
+                    <input type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={handleComposerMediaChange} />
                   </label>
                 </div>
               </div>
@@ -2865,6 +2881,7 @@ export default function App() {
                       </div>
 
                       <div className="feed-text post-detail-text">{renderFormattedText(detailPost.text)}</div>
+                      {detailPost.video && <video src={detailPost.video} className="feed-image" controls playsInline />}
                       {detailPost.image && <img src={detailPost.image} className="feed-image" alt="post content" />}
 
                       <div className="feed-actions">
@@ -3012,6 +3029,7 @@ export default function App() {
                     onChange={(e) => setEditPostText(e.target.value)}
                     autoFocus
                   />
+                  {editingPost.video && <video src={editingPost.video} className="feed-image" controls playsInline />}
                   {editingPost.image && <img src={editingPost.image} className="feed-image" alt="post content" />}
                 </div>
               </div>
@@ -3056,6 +3074,7 @@ export default function App() {
                       </div>
                     </div>
                     <div className="feed-text">{renderFormattedText(quoteReshareTarget.text)}</div>
+                    {quoteReshareTarget.video && <video src={quoteReshareTarget.video} className="feed-image" controls playsInline />}
                     {quoteReshareTarget.image && <img src={quoteReshareTarget.image} className="feed-image" alt="post content" />}
                   </div>
                 </div>
@@ -3361,6 +3380,7 @@ export default function App() {
                       </div>
 
                       <div className="feed-text" onClick={() => setActivePostId(post.id)} style={{ cursor: 'pointer' }}>{renderFormattedText(post.text)}</div>
+                      {post.video && <video src={post.video} className="feed-image" controls playsInline />}
                       {post.image && <img src={post.image} className="feed-image" alt="post content" onClick={() => setActivePostId(post.id)} style={{ cursor: 'pointer' }} />}
 
                       <div className="feed-actions">
@@ -3878,7 +3898,8 @@ export default function App() {
                                 )}
                               </div>
                             </div>
-                            <div style={{ fontSize: '12.5px', color: 'var(--text)', marginBottom: post.image ? '10px' : 0 }}>{renderFormattedText(post.text)}</div>
+                            <div style={{ fontSize: '12.5px', color: 'var(--text)', marginBottom: (post.image || post.video) ? '10px' : 0 }}>{renderFormattedText(post.text)}</div>
+                            {post.video && <video src={post.video} className="feed-image" controls playsInline style={{ marginBottom: 0 }} />}
                             {post.image && <img src={post.image} className="feed-image" alt="post content" style={{ marginBottom: 0 }} />}
                             <div style={{ display: 'flex', gap: '16px', marginTop: '10px', fontSize: '11px', color: 'var(--text-secondary)' }}>
                               <span><Icons.Heart fill={post.isLiked} /> {post.likes}</span>

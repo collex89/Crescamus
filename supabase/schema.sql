@@ -82,6 +82,7 @@ create table public.posts (
   author_id uuid not null references public.profiles (id) on delete cascade,
   text text not null check (char_length(text) between 1 and 2000),
   image_url text,
+  video_url text,
   created_at timestamptz not null default now()
 );
 

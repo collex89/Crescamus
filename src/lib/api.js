@@ -204,6 +204,7 @@ const mapPost = (row, myId, bookmarkedIds) => ({
   time: timeAgo(row.created_at),
   text: row.text,
   image: row.image_url || null,
+  video: row.video_url || null,
   likes: (row.likes || []).length,
   isLiked: (row.likes || []).some(l => l.user_id === myId),
   commentsCount: (row.comments || []).length,
@@ -227,7 +228,7 @@ const mapPost = (row, myId, bookmarkedIds) => ({
 // embeds the full original post in exactly this shape so mapPost() can be
 // reused for both.
 const POST_SELECT = `
-  id, text, image_url, created_at,
+  id, text, image_url, video_url, created_at,
   author:profiles!posts_author_id_fkey (id, username, full_name, parish, avatar_url, is_verified),
   likes (user_id),
   comments (id, text, created_at, parent_comment_id, user:profiles!comments_user_id_fkey (username, full_name, is_verified), comment_likes (user_id))
@@ -272,12 +273,12 @@ export async function undoReshare(postId, userId) {
   return supabase.from('reshares').delete().match({ post_id: postId, user_id: userId });
 }
 
-export async function createPost(text, imageUrl = null) {
+export async function createPost(text, imageUrl = null, videoUrl = null) {
   const { data, error } = await supabase
     .from('posts')
-    .insert({ text: text || '', image_url: imageUrl, author_id: (await supabase.auth.getUser()).data.user.id })
+    .insert({ text: text || '', image_url: imageUrl, video_url: videoUrl, author_id: (await supabase.auth.getUser()).data.user.id })
     .select(`
-      id, text, image_url, created_at,
+      id, text, image_url, video_url, created_at,
       author:profiles!posts_author_id_fkey (id, username, full_name, parish, avatar_url, is_verified)
     `)
     .single();
@@ -305,8 +306,10 @@ export async function setMute(mutedId, userId, muted) {
 }
 
 // Stored at <userId>/<timestamp>.<ext> — unlike avatars, a user can have many
-// post images, so each upload gets its own unique filename.
-export async function uploadPostImage(userId, file) {
+// post images/videos, so each upload gets its own unique filename. Same
+// bucket for both: its RLS policies (migration 004) are scoped by path, not
+// file type.
+export async function uploadPostMedia(userId, file) {
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
   const path = `${userId}/${Date.now()}.${ext}`;
   const { error } = await supabase.storage.from('post-images').upload(path, file, { cacheControl: '3600' });
