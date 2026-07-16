@@ -1154,7 +1154,7 @@ export default function App() {
 
   const openComposer = () => {
     setNewPostText('');
-    setComposerImage(null);
+    setComposerMedia(null);
     setComposerError('');
     setComposerOpen(true);
   };
