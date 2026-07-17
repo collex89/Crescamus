@@ -445,6 +445,10 @@ export default function App() {
 
   // Live Backend States (only used when Supabase is configured)
   const [session, setSession] = useState(null);
+  const [passwordRecoveryMode, setPasswordRecoveryMode] = useState(false);
+  const [recoveryPassword, setRecoveryPassword] = useState('');
+  const [showRecoveryPassword, setShowRecoveryPassword] = useState(false);
+  const [recoveryStatus, setRecoveryStatus] = useState(''); // '' | 'saving' | 'saved' | error message
   const [authError, setAuthError] = useState('');
   const [authNotice, setAuthNotice] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
@@ -626,7 +630,13 @@ export default function App() {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      setSession(s);
+      // Clicking the emailed reset link lands here with a special recovery
+      // session — without this, it silently logs the user into the normal
+      // app with no indication a reset is even in progress.
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecoveryMode(true);
+    });
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -1618,6 +1628,20 @@ export default function App() {
     if (error) setAuthError(error.message);
   };
 
+  const handleSetRecoveryPassword = async (e) => {
+    e.preventDefault();
+    if (recoveryPassword.length < 6) { setRecoveryStatus('Password must be at least 6 characters.'); return; }
+    setRecoveryStatus('saving');
+    const { error } = await api.updateMyPassword(recoveryPassword);
+    if (error) {
+      setRecoveryStatus(error.message);
+    } else {
+      setRecoveryStatus('saved');
+      setRecoveryPassword('');
+      setTimeout(() => setPasswordRecoveryMode(false), 1500);
+    }
+  };
+
   const handleChangePassword = async (e) => {
     e.preventDefault();
     if (changePasswordValue.length < 6) { setChangePasswordStatus('Password must be at least 6 characters.'); return; }
@@ -1877,8 +1901,56 @@ export default function App() {
           </div>
         )}
 
+        {/* ------------------ VIEW: PASSWORD RECOVERY ------------------ */}
+        {!splashActive && passwordRecoveryMode && (
+          <div className="auth-container scrollable">
+            <div className="auth-header">
+              <div className="auth-logo-symbol">
+                <img src="/logo.svg" alt="Credora logo" className="brand-logo-img" />
+              </div>
+              <h2 className="auth-title">Set New Password</h2>
+              <p className="auth-subtitle">Choose a new password for your account.</p>
+            </div>
+
+            <form className="auth-form" onSubmit={handleSetRecoveryPassword}>
+              <div className="form-group">
+                <label>New Password</label>
+                <div className="password-input-wrap">
+                  <input
+                    type={showRecoveryPassword ? 'text' : 'password'}
+                    className="form-input"
+                    placeholder="••••••••"
+                    value={recoveryPassword}
+                    onChange={(e) => { setRecoveryPassword(e.target.value); setRecoveryStatus(''); }}
+                    autoFocus
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle-btn"
+                    onClick={() => setShowRecoveryPassword(!showRecoveryPassword)}
+                    aria-label={showRecoveryPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showRecoveryPassword ? <Icons.EyeOff /> : <Icons.Eye />}
+                  </button>
+                </div>
+              </div>
+
+              {recoveryStatus === 'saved' ? (
+                <p className="input-ok"><Icons.Check /> Password updated. Taking you in...</p>
+              ) : recoveryStatus && recoveryStatus !== 'saving' && (
+                <p className="input-error">{recoveryStatus}</p>
+              )}
+
+              <button type="submit" className="auth-btn" disabled={recoveryStatus === 'saving' || recoveryStatus === 'saved'}>
+                {recoveryStatus === 'saving' ? 'Saving...' : 'Save New Password'}
+              </button>
+            </form>
+          </div>
+        )}
+
         {/* ------------------ VIEW 2: AUTH SCREEN ------------------ */}
-        {!splashActive && !isLoggedIn && (
+        {!splashActive && !isLoggedIn && !passwordRecoveryMode && (
           <div className="auth-container scrollable">
             <div className="auth-header">
               <div className="auth-logo-symbol">
@@ -2056,7 +2128,7 @@ export default function App() {
         )}
 
         {/* ------------------ LOGGED IN APP AREA ------------------ */}
-        {isLoggedIn && (
+        {isLoggedIn && !passwordRecoveryMode && (
           <>
             {/* GLOBAL TOP HEAD-BAR */}
             <div className="app-header">
