@@ -3414,7 +3414,9 @@ export default function App() {
                       <span className="story-hero-icon"><Icons.Rosary /></span>
                       <h2 style={{ color: '#fff', margin: '14px 0 8px' }}>Consistent Prayer Life</h2>
                       <p style={{ color: '#eee', marginBottom: '24px' }}>
-                        You have completed 6 days streak! Keep growing your communication with God.
+                        {streakCount > 0
+                          ? `You're on a ${streakCount}-day streak! Keep growing your communication with God.`
+                          : 'Start today — even one prayer logged begins your streak.'}
                       </p>
                       <button className="auth-btn" style={{ background: '#fff', color: 'var(--primary)' }} onClick={() => { setActiveTab('prayers'); setStoryOpen(null); }}>
                         Go to Prayers
