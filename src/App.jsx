@@ -491,6 +491,7 @@ export default function App() {
   const [activeChatUser, setActiveChatUser] = useState(null); // { id/userId, name, username, avatar }
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
+  const [chatImage, setChatImage] = useState(null); // { file, preview } | null
   const [chatSending, setChatSending] = useState(false);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const chatScrollRef = useRef(null);
@@ -1515,27 +1516,42 @@ export default function App() {
     setChatInput('');
   };
 
+  const handleChatImageChange = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setChatImage({ file, preview: URL.createObjectURL(file) });
+  };
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     const text = chatInput.trim();
-    if (!text || !activeChatUser) return;
+    if (!text && !chatImage) return;
+    if (!activeChatUser) return;
 
     setChatSending(true);
     try {
       if (isSupabaseConfigured && session) {
-        const { error } = await api.sendMessage(session.user.id, activeChatUser.userId, text);
+        let imagePath = null;
+        if (chatImage) {
+          const { path, error: uploadError } = await api.uploadMessageImage(session.user.id, chatImage.file);
+          if (uploadError) return;
+          imagePath = path;
+        }
+        const { error } = await api.sendMessage(session.user.id, activeChatUser.userId, text, imagePath);
         if (error) return;
         const fresh = await api.fetchMessages(session.user.id, activeChatUser.userId);
         setChatMessages(fresh);
         api.fetchConversations(session.user.id).then(setConversations);
       } else {
-        const newMsg = { id: `local-${Date.now()}`, fromMe: true, text, time: 'Just now' };
+        const newMsg = { id: `local-${Date.now()}`, fromMe: true, text, image: chatImage?.preview || null, time: 'Just now' };
         setChatMessages(prev => [...prev, newMsg]);
         setConversations(prev => prev.map(c => c.userId === activeChatUser.userId
-          ? { ...c, lastText: text, lastTime: 'Just now' }
+          ? { ...c, lastText: text || '📷 Photo', lastTime: 'Just now' }
           : c));
       }
       setChatInput('');
+      setChatImage(null);
     } finally {
       setChatSending(false);
     }
@@ -2521,9 +2537,15 @@ export default function App() {
                     </div>
                   ) : (
                     conversations.map(convo => (
-                      <div key={convo.userId} className="conversation-row" onClick={() => openChat(convo)}>
-                        <img src={convo.avatar} className="conversation-avatar" alt={convo.name} />
-                        <div className="conversation-info">
+                      <div key={convo.userId} className="conversation-row">
+                        <img
+                          src={convo.avatar}
+                          className="conversation-avatar"
+                          alt={convo.name}
+                          style={{ cursor: 'pointer' }}
+                          onClick={(e) => { e.stopPropagation(); openPersonProfile(convo.userId); }}
+                        />
+                        <div className="conversation-info" onClick={() => openChat(convo)} style={{ cursor: 'pointer' }}>
                           <div className="conversation-name-row">
                             <span className="conversation-name">{convo.name}</span>
                             <span className="conversation-time">{convo.lastTime}</span>
@@ -2561,13 +2583,29 @@ export default function App() {
                   ) : (
                     chatMessages.map(m => (
                       <div key={m.id} className={`chat-bubble-row ${m.fromMe ? 'mine' : 'theirs'}`}>
-                        <div className="chat-bubble">{m.text}</div>
+                        <div className="chat-bubble">
+                          {m.image && <img src={m.image} className="chat-bubble-image" alt="Attachment" />}
+                          {m.text && <span>{m.text}</span>}
+                        </div>
                       </div>
                     ))
                   )}
                 </div>
 
+                {chatImage && (
+                  <div className="composer-image-preview" style={{ margin: '0 12px 8px' }}>
+                    <img src={chatImage.preview} alt="Attachment preview" />
+                    <button className="composer-image-remove" onClick={() => setChatImage(null)}>
+                      <Icons.Close />
+                    </button>
+                  </div>
+                )}
+
                 <form className="chat-input-bar" onSubmit={handleSendMessage}>
+                  <label className="composer-attach-btn" style={{ flexShrink: 0 }}>
+                    <Icons.Image />
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleChatImageChange} />
+                  </label>
                   <input
                     type="text"
                     className="chat-input"
@@ -2575,7 +2613,7 @@ export default function App() {
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                   />
-                  <button type="submit" className="comment-submit-btn" disabled={!chatInput.trim() || chatSending}>
+                  <button type="submit" className="comment-submit-btn" disabled={(!chatInput.trim() && !chatImage) || chatSending}>
                     <Icons.Send />
                   </button>
                 </form>
@@ -3898,6 +3936,14 @@ export default function App() {
               {activeTab === 'profile' && (
                 <div>
                   <div className="profile-hero">
+                    <button
+                      className="icon-btn"
+                      style={{ position: 'absolute', top: '16px', right: '0' }}
+                      onClick={() => setSettingsOpen(true)}
+                      aria-label="Settings"
+                    >
+                      <Icons.Gear />
+                    </button>
                     <img src={myAvatar} className="profile-avatar-large" alt="Profile" />
                     <h3 className="profile-name">
                       {username || 'Catholic Pilgrim'}

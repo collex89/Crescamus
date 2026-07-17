@@ -3134,6 +3134,18 @@ textarea.form-input {
   border-radius: 18px;
   font-size: 13.5px;
   line-height: 1.4;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chat-bubble-image {
+  width: 100%;
+  max-width: 220px;
+  max-height: 280px;
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
 }
 
 .chat-bubble-row.mine .chat-bubble {

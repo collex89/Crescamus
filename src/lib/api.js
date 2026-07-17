@@ -417,7 +417,7 @@ export async function fetchConversations(myId) {
   const { data, error } = await supabase
     .from('messages')
     .select(`
-      id, sender_id, recipient_id, text, read, created_at,
+      id, sender_id, recipient_id, text, image_path, read, created_at,
       sender:profiles!messages_sender_id_fkey (id, username, full_name, avatar_url),
       recipient:profiles!messages_recipient_id_fkey (id, username, full_name, avatar_url)
     `)
@@ -435,7 +435,7 @@ export async function fetchConversations(myId) {
         name: displayName(partner),
         username: partner.username,
         avatar: avatarOf(partner),
-        lastText: m.text,
+        lastText: m.text || (m.image_path ? '📷 Photo' : ''),
         lastTime: timeAgo(m.created_at),
         lastAt: m.created_at,
         unreadCount: 0
@@ -449,21 +449,44 @@ export async function fetchConversations(myId) {
 export async function fetchMessages(myId, otherId) {
   const { data, error } = await supabase
     .from('messages')
-    .select('id, sender_id, text, created_at')
+    .select('id, sender_id, text, image_path, created_at')
     .or(`and(sender_id.eq.${myId},recipient_id.eq.${otherId}),and(sender_id.eq.${otherId},recipient_id.eq.${myId})`)
     .order('created_at', { ascending: true });
   if (error) return [];
+
+  // Signed URLs expire, so they're minted fresh on every fetch rather than
+  // stored — the bucket is private (migration 015), unlike post-images.
+  const withImages = data.filter(m => m.image_path);
+  const signedByPath = new Map();
+  if (withImages.length > 0) {
+    const { data: signed } = await supabase.storage
+      .from('message-images')
+      .createSignedUrls(withImages.map(m => m.image_path), 3600);
+    (signed || []).forEach(s => { if (!s.error) signedByPath.set(s.path, s.signedUrl); });
+  }
 
   return data.map(m => ({
     id: m.id,
     fromMe: m.sender_id === myId,
     text: m.text,
+    image: m.image_path ? (signedByPath.get(m.image_path) || null) : null,
     time: timeAgo(m.created_at)
   }));
 }
 
-export async function sendMessage(senderId, recipientId, text) {
-  return supabase.from('messages').insert({ sender_id: senderId, recipient_id: recipientId, text });
+export async function sendMessage(senderId, recipientId, text, imagePath = null) {
+  return supabase.from('messages').insert({ sender_id: senderId, recipient_id: recipientId, text: text || '', image_path: imagePath });
+}
+
+// Stored at <userId>/<timestamp>.<ext> in the private "message-images"
+// bucket (migration 015) -- returns the storage path, not a public URL;
+// resolve it to a signed URL for display (see fetchMessages).
+export async function uploadMessageImage(userId, file) {
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const path = `${userId}/${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from('message-images').upload(path, file, { cacheControl: '3600' });
+  if (error) return { path: null, error };
+  return { path, error: null };
 }
 
 export async function markConversationRead(myId, otherId) {
