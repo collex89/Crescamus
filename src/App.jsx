@@ -408,6 +408,28 @@ const Icons = {
       <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.4 10.4 0 0 1 12 4c7 0 11 8 11 8a20.3 20.3 0 0 1-3.22 4.44M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
       <line x1="1" y1="1" x2="23" y2="23"/>
     </svg>
+  ),
+  XLogo: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="4" y1="4" x2="20" y2="20"/><line x1="20" y1="4" x2="4" y2="20"/>
+    </svg>
+  ),
+  WhatsApp: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 21l1.4-4.6A9 9 0 1 1 8 19.5Z"/>
+      <path d="M8.5 9.5c0 3 2 5.5 5.5 5.5.6 0 1-.5.8-1l-.6-1.6c-.15-.4-.6-.6-1-.45l-1 .35a5 5 0 0 1-2.5-2.5l.35-1c.15-.4-.05-.85-.45-1L8 7.3c-.5-.2-1 .2-1 .8Z"/>
+    </svg>
+  ),
+  Facebook: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 3h-2a5 5 0 0 0-5 5v3H6v4h2v6h4v-6h3l1-4h-4V8a1 1 0 0 1 1-1h3Z"/>
+    </svg>
+  ),
+  LinkIcon: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+    </svg>
   )
 };
 
@@ -466,6 +488,8 @@ export default function App() {
   const [editPostText, setEditPostText] = useState('');
   const [editPostSaving, setEditPostSaving] = useState(false);
   const [reshareMenuOpen, setReshareMenuOpen] = useState(null); // post id whose Repost/Quote choice is open
+  const [shareMenuOpen, setShareMenuOpen] = useState(null); // post id whose Share destination menu is open
+  const [copiedShareId, setCopiedShareId] = useState(null); // post id that just had its link copied (brief "Copied!" feedback)
   const [quoteReshareTarget, setQuoteReshareTarget] = useState(null); // post being quote-reshared, or null
   const [quoteReshareText, setQuoteReshareText] = useState('');
 
@@ -946,6 +970,38 @@ export default function App() {
     handleReshare(quoteReshareTarget, text);
     setQuoteReshareTarget(null);
     setQuoteReshareText('');
+  };
+
+  // There's no per-post route in this app yet, so the shared link is just
+  // the app itself -- the excerpt in the share text carries the content.
+  const getShareUrl = () => window.location.origin;
+  const getShareText = (post) => {
+    const excerpt = post.text.length > 100 ? `${post.text.slice(0, 100)}…` : post.text;
+    return `"${excerpt}" — via Credora`;
+  };
+
+  const shareToX = (post) => {
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(getShareText(post))}&url=${encodeURIComponent(getShareUrl())}`, '_blank', 'noopener,noreferrer');
+    setShareMenuOpen(null);
+  };
+  const shareToWhatsApp = (post) => {
+    window.open(`https://wa.me/?text=${encodeURIComponent(`${getShareText(post)} ${getShareUrl()}`)}`, '_blank', 'noopener,noreferrer');
+    setShareMenuOpen(null);
+  };
+  const shareToFacebook = (_post) => {
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(getShareUrl())}`, '_blank', 'noopener,noreferrer');
+    setShareMenuOpen(null);
+  };
+  const shareViaNative = async (post) => {
+    try { await navigator.share({ title: 'Credora', text: getShareText(post), url: getShareUrl() }); } catch {}
+    setShareMenuOpen(null);
+  };
+  const copyShareLink = async (post) => {
+    try {
+      await navigator.clipboard.writeText(getShareUrl());
+      setCopiedShareId(post.id);
+      setTimeout(() => setCopiedShareId(null), 1500);
+    } catch {}
   };
 
   const handleUndoReshare = (post) => {
@@ -3031,9 +3087,32 @@ export default function App() {
                           <Icons.Bookmark fill={detailPost.isBookmarked} />
                           <span>Save</span>
                         </button>
-                        <button className="feed-action-btn" onClick={() => alert("Link copied to clipboard!")}>
-                          <Icons.Share />
-                        </button>
+                        <div className="post-menu-wrap">
+                          <button className="feed-action-btn" onClick={() => setShareMenuOpen(shareMenuOpen === detailPost.id ? null : detailPost.id)} title="Share">
+                            <Icons.Share />
+                          </button>
+                          {shareMenuOpen === detailPost.id && (
+                            <div className="post-menu-dropdown">
+                              {typeof navigator !== 'undefined' && navigator.share && (
+                                <button className="post-menu-item" onClick={() => shareViaNative(detailPost)}>
+                                  <Icons.Share /> More options...
+                                </button>
+                              )}
+                              <button className="post-menu-item" onClick={() => shareToX(detailPost)}>
+                                <Icons.XLogo /> X
+                              </button>
+                              <button className="post-menu-item" onClick={() => shareToWhatsApp(detailPost)}>
+                                <Icons.WhatsApp /> WhatsApp
+                              </button>
+                              <button className="post-menu-item" onClick={() => shareToFacebook(detailPost)}>
+                                <Icons.Facebook /> Facebook
+                              </button>
+                              <button className="post-menu-item" onClick={() => copyShareLink(detailPost)}>
+                                <Icons.LinkIcon /> {copiedShareId === detailPost.id ? 'Copied!' : 'Copy Link'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -3553,9 +3632,32 @@ export default function App() {
                           <span>Save</span>
                         </button>
 
-                        <button className="feed-action-btn" onClick={() => alert("Link copied to clipboard!")}>
-                          <Icons.Share />
-                        </button>
+                        <div className="post-menu-wrap">
+                          <button className="feed-action-btn" onClick={() => setShareMenuOpen(shareMenuOpen === post.id ? null : post.id)} title="Share">
+                            <Icons.Share />
+                          </button>
+                          {shareMenuOpen === post.id && (
+                            <div className="post-menu-dropdown">
+                              {typeof navigator !== 'undefined' && navigator.share && (
+                                <button className="post-menu-item" onClick={() => shareViaNative(post)}>
+                                  <Icons.Share /> More options...
+                                </button>
+                              )}
+                              <button className="post-menu-item" onClick={() => shareToX(post)}>
+                                <Icons.XLogo /> X
+                              </button>
+                              <button className="post-menu-item" onClick={() => shareToWhatsApp(post)}>
+                                <Icons.WhatsApp /> WhatsApp
+                              </button>
+                              <button className="post-menu-item" onClick={() => shareToFacebook(post)}>
+                                <Icons.Facebook /> Facebook
+                              </button>
+                              <button className="post-menu-item" onClick={() => copyShareLink(post)}>
+                                <Icons.LinkIcon /> {copiedShareId === post.id ? 'Copied!' : 'Copy Link'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       {/* Comments Collapsed Panel */}
