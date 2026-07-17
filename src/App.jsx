@@ -933,7 +933,7 @@ export default function App() {
         quoteText: quoteText || null,
         createdAt: new Date().toISOString()
       },
-      ...prev
+      ...prev.map(p => p.originalPostId === originalId ? { ...p, resharesCount: (p.resharesCount || 0) + 1 } : p)
     ]);
     if (isSupabaseConfigured && session) {
       api.reshare(originalId, session.user.id, quoteText || null).catch(() => {});
@@ -1222,6 +1222,7 @@ export default function App() {
           image: composerMedia?.type === 'image' ? composerMedia.preview : null,
           video: composerMedia?.type === 'video' ? composerMedia.preview : null,
           likes: 0,
+          resharesCount: 0,
           commentsCount: 0,
           comments: [],
           isLiked: false,
@@ -3003,10 +3004,11 @@ export default function App() {
                           <Icons.Comment />
                           <span>{detailPost.commentsCount}</span>
                         </button>
-                        {detailPost.user.username !== myUsername && (
+                        {detailPost.user.username !== myUsername ? (
                           <div className="post-menu-wrap">
                             <button className="feed-action-btn" onClick={() => setReshareMenuOpen(reshareMenuOpen === detailPost.id ? null : detailPost.id)} title="Reshare">
                               <Icons.Repost />
+                              <span>{detailPost.resharesCount || 0}</span>
                             </button>
                             {reshareMenuOpen === detailPost.id && (
                               <div className="post-menu-dropdown">
@@ -3019,6 +3021,11 @@ export default function App() {
                               </div>
                             )}
                           </div>
+                        ) : (
+                          <span className="feed-action-btn" title="Reposts" style={{ cursor: 'default' }}>
+                            <Icons.Repost />
+                            <span>{detailPost.resharesCount || 0}</span>
+                          </span>
                         )}
                         <button className={`feed-action-btn ${detailPost.isBookmarked ? 'bookmarked' : ''}`} onClick={() => handleBookmarkPost(detailPost.originalPostId)}>
                           <Icons.Bookmark fill={detailPost.isBookmarked} />
@@ -3517,10 +3524,11 @@ export default function App() {
                           <span>{post.commentsCount}</span>
                         </button>
 
-                        {post.user.username !== myUsername && (
+                        {post.user.username !== myUsername ? (
                           <div className="post-menu-wrap">
                             <button className="feed-action-btn" onClick={() => setReshareMenuOpen(reshareMenuOpen === post.id ? null : post.id)} title="Reshare">
                               <Icons.Repost />
+                              <span>{post.resharesCount || 0}</span>
                             </button>
                             {reshareMenuOpen === post.id && (
                               <div className="post-menu-dropdown">
@@ -3533,6 +3541,11 @@ export default function App() {
                               </div>
                             )}
                           </div>
+                        ) : (
+                          <span className="feed-action-btn" title="Reposts" style={{ cursor: 'default' }}>
+                            <Icons.Repost />
+                            <span>{post.resharesCount || 0}</span>
+                          </span>
                         )}
 
                         <button className={`feed-action-btn ${post.isBookmarked ? 'bookmarked' : ''}`} onClick={() => handleBookmarkPost(post.originalPostId)}>

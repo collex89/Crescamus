@@ -207,6 +207,7 @@ const mapPost = (row, myId, bookmarkedIds) => ({
   video: row.video_url || null,
   likes: (row.likes || []).length,
   isLiked: (row.likes || []).some(l => l.user_id === myId),
+  resharesCount: (row.reshares || []).length,
   commentsCount: (row.comments || []).length,
   comments: buildCommentTree(
     (row.comments || [])
@@ -231,6 +232,7 @@ const POST_SELECT = `
   id, text, image_url, video_url, created_at,
   author:profiles!posts_author_id_fkey (id, username, full_name, parish, avatar_url, is_verified),
   likes (user_id),
+  reshares (user_id),
   comments (id, text, created_at, parent_comment_id, user:profiles!comments_user_id_fkey (username, full_name, is_verified), comment_likes (user_id))
 `;
 
