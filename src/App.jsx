@@ -3291,6 +3291,19 @@ export default function App() {
                     <span className="composer-trigger-plus"><Icons.Plus /></span>
                   </button>
 
+                  {/* Saints Quick Discover Banner — the Saints library otherwise
+                      has no obvious entry point from Home, where most people land. */}
+                  <div className="card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, rgba(212,175,55,0.1), rgba(30,58,138,0.05))', border: '1px solid rgba(var(--secondary-rgb), 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => {
+                    setSaintCategoryFilter('All');
+                    setSubView('saintsBrowse');
+                  }}>
+                    <div>
+                      <h4 style={{ color: 'var(--primary)', fontSize: '14px' }}>Discover the Saints</h4>
+                      <p style={{ fontSize: '11px', marginTop: '2px' }}>Read their life stories, feast days & quotes.</p>
+                    </div>
+                    <span style={{ color: 'var(--secondary)', display: 'flex' }}><Icons.Sparkles /></span>
+                  </div>
+
                   {visiblePosts.length === 0 && (
                     <div className="search-empty-state">
                       <span className="empty-state-icon"><Icons.Comment /></span>

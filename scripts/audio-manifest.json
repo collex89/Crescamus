@@ -25,5 +25,23 @@
     "artist": "Membeth",
     "localPath": "/audio/chant_venicreator.mp3",
     "sizeBytes": 823849
+  },
+  {
+    "id": "hymn_almaredemptoris",
+    "origUrl": "https://upload.wikimedia.org/wikipedia/commons/9/90/Alma_Redemptoris_Mater.ogg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Alma_Redemptoris_Mater.ogg",
+    "license": "CC BY-SA 3.0",
+    "artist": "Rick Dechance",
+    "localPath": "/audio/hymn_almaredemptoris.mp3",
+    "sizeBytes": 1731928
+  },
+  {
+    "id": "hymn_tantumergo",
+    "origUrl": "https://upload.wikimedia.org/wikipedia/commons/7/7f/Tantum_Ergo_I_Gregorian.ogg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tantum_Ergo_I_Gregorian.ogg",
+    "license": "CC BY-SA 3.0",
+    "artist": "Gareth Hughes",
+    "localPath": "/audio/hymn_tantumergo.mp3",
+    "sizeBytes": 1161718
   }
 ]

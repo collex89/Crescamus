@@ -31,6 +31,18 @@ const CHANTS = [
     origUrl: 'https://upload.wikimedia.org/wikipedia/commons/0/01/Veni.creator.spiritus.ogg',
     sourceUrl: 'https://commons.wikimedia.org/wiki/File:Veni.creator.spiritus.ogg',
     license: 'Public domain', artist: 'Membeth'
+  },
+  {
+    id: 'hymn_almaredemptoris',
+    origUrl: 'https://upload.wikimedia.org/wikipedia/commons/9/90/Alma_Redemptoris_Mater.ogg',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Alma_Redemptoris_Mater.ogg',
+    license: 'CC BY-SA 3.0', artist: 'Rick Dechance'
+  },
+  {
+    id: 'hymn_tantumergo',
+    origUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/7f/Tantum_Ergo_I_Gregorian.ogg',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Tantum_Ergo_I_Gregorian.ogg',
+    license: 'CC BY-SA 3.0', artist: 'Gareth Hughes'
   }
 ];
 
@@ -55,7 +67,7 @@ for (const chant of CHANTS) {
     console.log(`✗ ${chant.id.padEnd(18)} ERROR: ${err.message}`);
     results.push({ ...chant, localPath: null });
   }
-  await new Promise(r => setTimeout(r, 1000));
+  await new Promise(r => setTimeout(r, 5000));
 }
 
 writeFileSync(path.join(__dirname, 'audio-manifest.json'), JSON.stringify(results, null, 2));

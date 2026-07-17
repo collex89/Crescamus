@@ -486,6 +486,39 @@ export const AUDIO_TRACKS = [
     license: "Public domain"
   },
   {
+    id: "hymn_panisangelicus",
+    title: "Panis Angelicus",
+    artist: "Michèle Laporte & Philippe Malgouyres",
+    category: "Hymns",
+    duration: 236,
+    url: "https://archive.org/download/CesarFranckPanisAngelicus/Franck-PanisAngelicus_64kb.mp3",
+    cover: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&q=80&w=300",
+    sourceUrl: "https://archive.org/details/CesarFranckPanisAngelicus",
+    license: "Public domain"
+  },
+  {
+    id: "hymn_almaredemptoris",
+    title: "Alma Redemptoris Mater",
+    artist: "Rick Dechance",
+    category: "Hymns",
+    duration: 78,
+    url: "/audio/hymn_almaredemptoris.mp3",
+    cover: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&q=80&w=300",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Alma_Redemptoris_Mater.ogg",
+    license: "CC BY-SA 3.0"
+  },
+  {
+    id: "hymn_tantumergo",
+    title: "Tantum Ergo",
+    artist: "Gareth Hughes",
+    category: "Hymns",
+    duration: 75,
+    url: "/audio/hymn_tantumergo.mp3",
+    cover: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&q=80&w=300",
+    sourceUrl: "https://commons.wikimedia.org/wiki/File:Tantum_Ergo_I_Gregorian.ogg",
+    license: "CC BY-SA 3.0"
+  },
+  {
     id: "rosary_joyful",
     title: "The Holy Rosary: Joyful Mysteries",
     artist: "Christian Peschken",
