@@ -1,20 +1,20 @@
-// About page copy — kept separate from App.jsx the same way legalContent.js
+// About page copy, kept separate from App.jsx the same way legalContent.js
 // and dailyVerses.js are, so the actual words can be edited without touching
 // component logic.
 
-export const MISSION = `Crescamus takes its name from the Latin "let us grow" — this app exists to help you grow in faith through Scripture, prayer, the lives of the saints, and a community walking the same path.`;
+export const MISSION = `Crescamus comes from the Latin for "let us grow." It's built to help you grow in faith through Scripture, prayer, the lives of the saints, and a community doing the same.`;
 
 // icon refers to a key in the Icons object in App.jsx.
 export const ABOUT_FEATURES = [
   {
     icon: 'Bible',
     title: 'Bible',
-    description: 'The full Catholic Bible — Old and New Testament, including the Deuterocanonical books — organized and ready to read.'
+    description: 'The full Catholic Bible, Old and New Testament, including the Deuterocanonical books, organized and ready to read.'
   },
   {
     icon: 'Rosary',
     title: 'Prayers',
-    description: 'Track a daily prayer streak, set reminders for the Rosary, the Angelus, and more, and keep personal prayer intentions.'
+    description: 'Track a daily prayer streak, set reminders for the Rosary and the Angelus, and keep personal prayer intentions.'
   },
   {
     icon: 'Sparkles',
@@ -24,7 +24,7 @@ export const ABOUT_FEATURES = [
   {
     icon: 'Audio',
     title: 'Audio',
-    description: 'Gregorian chants, hymns, the Rosary, and Scripture readings — every track real and properly licensed, never a placeholder.'
+    description: 'Gregorian chants, hymns, the Rosary, and Scripture readings. Every track is real and properly licensed, not a placeholder.'
   },
   {
     icon: 'Users',
@@ -33,4 +33,4 @@ export const ABOUT_FEATURES = [
   }
 ];
 
-export const CONTENT_SOURCING_NOTE = `Scripture, saint biographies, and audio are drawn from public-domain and Creative Commons-licensed sources (Wikipedia/Wikimedia Commons, LibriVox, Internet Archive), with attribution shown in the app where it applies.`;
+export const CONTENT_SOURCING_NOTE = `Scripture, saint biographies, and audio are drawn from public-domain and Creative Commons sources (Wikipedia/Wikimedia Commons, LibriVox, Internet Archive), with attribution shown in the app where it applies.`;
