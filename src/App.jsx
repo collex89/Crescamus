@@ -5,6 +5,7 @@ import * as api from './lib/api';
 import { loadBibleChapter } from './lib/bible';
 import { getDailyVerse } from './data/dailyVerses';
 import { PRIVACY_POLICY, TERMS_OF_SERVICE } from './data/legalContent';
+import { MISSION, ABOUT_FEATURES, CONTENT_SOURCING_NOTE } from './data/aboutContent';
 import { startReminderScheduler, requestNotificationPermission, getNotificationPermission, isNotificationSupported, unlockAlarmAudio } from './lib/reminders';
 import { renderFormattedText, wrapSelection, prefixLines, insertAtCursor } from './lib/textFormatting';
 import { downloadVerseImage } from './lib/verseImage';
@@ -502,6 +503,7 @@ export default function App() {
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [legalView, setLegalView] = useState(null); // null | 'privacy' | 'terms'
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [deleteAccountConfirmText, setDeleteAccountConfirmText] = useState('');
@@ -2927,6 +2929,12 @@ export default function App() {
                       {!isSupabaseConfigured && <span className="input-hint">Demo mode — no password is actually stored.</span>}
                     </div>
 
+                    <h4 className="settings-section-title">About</h4>
+                    <button className="settings-row" onClick={() => setAboutOpen(true)}>
+                      <span><Icons.Sparkles /> About Crescamus</span>
+                      <Icons.ChevronRight />
+                    </button>
+
                     <h4 className="settings-section-title">Legal</h4>
                     <button className="settings-row" onClick={() => setLegalView('privacy')}>
                       <span><Icons.Shield /> Privacy Policy</span>
@@ -2948,6 +2956,55 @@ export default function App() {
                       setIsLoggedIn(false);
                     }}>
                       <span><Icons.LogOut /> Sign Out</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ------------------ VIEW: ABOUT ------------------ */}
+            {aboutOpen && (
+              <div className="saint-details-view">
+                <div className="person-view-header">
+                  <button className="icon-btn" onClick={() => setAboutOpen(false)}>
+                    <Icons.ChevronLeft />
+                  </button>
+                  <h3>About</h3>
+                  <div style={{ width: '24px' }}></div>
+                </div>
+                <div className="scrollable">
+                  <div style={{ textAlign: 'center', padding: '8px 0 24px' }}>
+                    <img src="/logo.svg" alt="Crescamus logo" style={{ width: '64px', height: '64px' }} />
+                    <h2 style={{ margin: '12px 0 2px' }}>Crescamus</h2>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Growing Together in Christ</p>
+                  </div>
+
+                  <p style={{ fontSize: '14px', lineHeight: 1.6, marginBottom: '24px' }}>{MISSION}</p>
+
+                  <h4 className="settings-section-title">What You Can Do Here</h4>
+                  {ABOUT_FEATURES.map(feature => {
+                    const FeatureIcon = Icons[feature.icon];
+                    return (
+                      <div key={feature.title} style={{ display: 'flex', gap: '14px', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+                        <span style={{ color: 'var(--primary)', flexShrink: 0, marginTop: '2px' }}>
+                          {FeatureIcon && <FeatureIcon />}
+                        </span>
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '2px' }}>{feature.title}</div>
+                          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{feature.description}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '20px 0' }}>{CONTENT_SOURCING_NOTE}</p>
+
+                  <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginTop: '8px' }}>
+                    <button className="feed-action-btn" onClick={() => { setAboutOpen(false); setLegalView('privacy'); }}>
+                      Privacy Policy
+                    </button>
+                    <button className="feed-action-btn" onClick={() => { setAboutOpen(false); setLegalView('terms'); }}>
+                      Terms of Service
                     </button>
                   </div>
                 </div>
