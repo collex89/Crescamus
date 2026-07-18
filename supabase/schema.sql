@@ -1,5 +1,5 @@
 -- ====================================================================
--- Credora database schema
+-- Crescamus database schema
 -- Run this once in your Supabase project: SQL Editor -> New query ->
 -- paste the whole file -> Run.
 -- ====================================================================

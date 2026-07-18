@@ -1,6 +1,6 @@
 // One-time enrichment script: pulls real biographies (Wikipedia article
 // intros, CC BY-SA) and verifies each portrait's license on Wikimedia
-// Commons before using it, so Credora only ships images that are actually
+// Commons before using it, so Crescamus only ships images that are actually
 // free to use (public domain or open-licensed), never assumed.
 //
 // Run with: node scripts/fetch-saints.mjs
@@ -56,7 +56,7 @@ function trimToParagraph(text, maxLen) {
 }
 
 async function fetchJSON(url, attempt = 1) {
-  const res = await fetch(url, { headers: { 'User-Agent': 'Credora-App/1.0 (contact: app content enrichment script; one-time batch run)' } });
+  const res = await fetch(url, { headers: { 'User-Agent': 'Crescamus-App/1.0 (contact: app content enrichment script; one-time batch run)' } });
   if (res.status === 429 && attempt <= 5) {
     const wait = attempt * 4000;
     console.log(`  (rate limited, waiting ${wait / 1000}s...)`);

@@ -125,7 +125,7 @@ export function downloadVerseImage({ text, reference }) {
   ctx.fillStyle = CREAM;
   ctx.font = '600 52px Georgia, serif';
   ctx.letterSpacing = '14px';
-  ctx.fillText('C R E D O R A', W / 2, H - 170);
+  ctx.fillText('C R E S C A M U S', W / 2, H - 170);
   ctx.letterSpacing = '4px';
   ctx.fillStyle = 'rgba(250, 250, 248, 0.75)';
   ctx.font = '30px Georgia, serif';
@@ -137,7 +137,7 @@ export function downloadVerseImage({ text, reference }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `credora-daily-verse-${safeRef}.png`;
+    a.download = `crescamus-daily-verse-${safeRef}.png`;
     document.body.appendChild(a);
     a.click();
     a.remove();

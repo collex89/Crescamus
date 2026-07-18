@@ -977,7 +977,7 @@ export default function App() {
   const getShareUrl = () => window.location.origin;
   const getShareText = (post) => {
     const excerpt = post.text.length > 100 ? `${post.text.slice(0, 100)}…` : post.text;
-    return `"${excerpt}" — via Credora`;
+    return `"${excerpt}" — via Crescamus`;
   };
 
   const shareToX = (post) => {
@@ -993,7 +993,7 @@ export default function App() {
     setShareMenuOpen(null);
   };
   const shareViaNative = async (post) => {
-    try { await navigator.share({ title: 'Credora', text: getShareText(post), url: getShareUrl() }); } catch {}
+    try { await navigator.share({ title: 'Crescamus', text: getShareText(post), url: getShareUrl() }); } catch {}
     setShareMenuOpen(null);
   };
   const copyShareLink = async (post) => {
@@ -1966,9 +1966,9 @@ export default function App() {
           <div className="splash-screen">
             <div className="splash-logo-container">
               <div className="splash-icon">
-                <img src="/logo.svg" alt="Credora logo" className="brand-logo-img" />
+                <img src="/logo.svg" alt="Crescamus logo" className="brand-logo-img" />
               </div>
-              <h1 className="splash-title">Credora</h1>
+              <h1 className="splash-title">Crescamus</h1>
               <p className="splash-tagline">Growing Together in Christ</p>
             </div>
           </div>
@@ -1979,7 +1979,7 @@ export default function App() {
           <div className="auth-container scrollable">
             <div className="auth-header">
               <div className="auth-logo-symbol">
-                <img src="/logo.svg" alt="Credora logo" className="brand-logo-img" />
+                <img src="/logo.svg" alt="Crescamus logo" className="brand-logo-img" />
               </div>
               <h2 className="auth-title">Set New Password</h2>
               <p className="auth-subtitle">Choose a new password for your account.</p>
@@ -2027,7 +2027,7 @@ export default function App() {
           <div className="auth-container scrollable">
             <div className="auth-header">
               <div className="auth-logo-symbol">
-                <img src="/logo.svg" alt="Credora logo" className="brand-logo-img" />
+                <img src="/logo.svg" alt="Crescamus logo" className="brand-logo-img" />
               </div>
               <h2 className="auth-title">{authMode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
               <p className="auth-subtitle">Join the Catholic digital sanctuary</p>
@@ -2098,7 +2098,7 @@ export default function App() {
                 <input
                   type="email"
                   className="form-input"
-                  placeholder="faith@credora.com"
+                  placeholder="faith@crescamus.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -2209,7 +2209,7 @@ export default function App() {
                 <div className="brand-icon-logo">
                   <Icons.Halo active={true} />
                 </div>
-                <h1>Credora</h1>
+                <h1>Crescamus</h1>
               </div>
 
               <div className="header-actions">
@@ -2333,7 +2333,7 @@ export default function App() {
                 {searchQuery.trim() === '' ? (
                   <div className="search-empty-state">
                     <span className="empty-state-icon"><Icons.Search /></span>
-                    <h3 style={{ fontSize: '15px', marginBottom: '4px' }}>Search Credora</h3>
+                    <h3 style={{ fontSize: '15px', marginBottom: '4px' }}>Search Crescamus</h3>
                     <p>Enter keywords to explore the Catholic Sanctuary.</p>
                   </div>
                 ) : searchResults.length === 0 ? (
@@ -2882,7 +2882,7 @@ export default function App() {
                       {!isNotificationSupported() ? (
                         <span className="input-hint">Not supported in this browser.</span>
                       ) : notificationPermission === 'granted' ? (
-                        <span className="input-ok"><Icons.Check /> Enabled — reminders will fire while Credora is open.</span>
+                        <span className="input-ok"><Icons.Check /> Enabled — reminders will fire while Crescamus is open.</span>
                       ) : notificationPermission === 'denied' ? (
                         <span className="input-error">Blocked — enable notifications for this site in your browser settings.</span>
                       ) : (
@@ -2891,7 +2891,7 @@ export default function App() {
                         </button>
                       )}
                       <span className="input-hint">
-                        Reminders fire while Credora is open in your browser. Always-on reminders that work even when the app is closed need the native app version, planned for later.
+                        Reminders fire while Crescamus is open in your browser. Always-on reminders that work even when the app is closed need the native app version, planned for later.
                       </span>
                     </div>
 
@@ -3439,7 +3439,7 @@ export default function App() {
                       <span className="story-hero-icon"><Icons.Users /></span>
                       <h2 style={{ color: '#fff', margin: '14px 0 8px' }}>Parish Circle</h2>
                       <p style={{ color: '#eee', marginBottom: '24px' }}>
-                        Join your local church parish circle on Credora to share news, arrange service actions, and pray.
+                        Join your local church parish circle on Crescamus to share news, arrange service actions, and pray.
                       </p>
                     </div>
                   )}
@@ -3856,7 +3856,7 @@ export default function App() {
 
                   {!isNotificationSupported() ? null : notificationPermission === 'denied' && (
                     <div className="auth-error" style={{ marginBottom: '16px' }}>
-                      Notifications are blocked in your browser settings, so reminders below won't be able to fire. You can re-enable them in your browser's site settings for Credora.
+                      Notifications are blocked in your browser settings, so reminders below won't be able to fire. You can re-enable them in your browser's site settings for Crescamus.
                     </div>
                   )}
 

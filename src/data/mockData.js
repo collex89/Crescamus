@@ -1,4 +1,4 @@
-// High-fidelity Catholic content database for Credora
+// High-fidelity Catholic content database for Crescamus
 
 export const BIBLE_BOOKS = [
   // Old Testament (46 Books)

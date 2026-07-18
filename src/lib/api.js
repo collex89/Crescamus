@@ -1,4 +1,4 @@
-// Data layer for Credora. Every function maps database rows into the
+// Data layer for Crescamus. Every function maps database rows into the
 // exact shapes the UI already renders, so App.jsx stays presentation-only.
 import { supabase } from './supabase';
 

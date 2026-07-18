@@ -57,7 +57,7 @@ const results = [];
 for (const chant of CHANTS) {
   const mp3Url = transcodedMp3Url(chant.origUrl);
   try {
-    const res = await fetch(mp3Url, { headers: { 'User-Agent': 'Credora-App/1.0 (audio download script)' } });
+    const res = await fetch(mp3Url, { headers: { 'User-Agent': 'Crescamus-App/1.0 (audio download script)' } });
     if (!res.ok) throw new Error(`${res.status}`);
     const buf = Buffer.from(await res.arrayBuffer());
     writeFileSync(path.join(OUT_DIR, `${chant.id}.mp3`), buf);

@@ -1,6 +1,6 @@
 // One-time build script: parses the public-domain Douay-Rheims (Challoner
 // revision) text from Project Gutenberg into per-book JSON files matching
-// Credora's existing BIBLE_BOOKS ids, so the Bible reader has real,
+// Crescamus's existing BIBLE_BOOKS ids, so the Bible reader has real,
 // complete, legally-free scripture text for all 73 Catholic canon books.
 //
 // Run with: node scripts/parse-bible.mjs
@@ -16,7 +16,7 @@ const SRC = path.join(__dirname, 'dr_source.txt');
 const OUT_DIR = path.join(__dirname, '..', 'src', 'data', 'bible');
 
 // Douay-Rheims book title (as it appears in "<Title> Chapter N" headers) ->
-// Credora book id + expected chapter count (from src/data/mockData.js).
+// Crescamus book id + expected chapter count (from src/data/mockData.js).
 const BOOK_MAP = [
   ['Genesis', 'gen', 50], ['Exodus', 'exo', 40], ['Leviticus', 'lev', 27],
   ['Numbers', 'num', 36], ['Deuteronomy', 'deu', 34], ['Josue', 'jos', 24],

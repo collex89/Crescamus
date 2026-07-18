@@ -1,4 +1,4 @@
-# Connecting Credora to Supabase (going live)
+# Connecting Crescamus to Supabase (going live)
 
 The app runs in **demo mode** (mock data, nothing saved) until you connect it
 to a Supabase project. Once connected, accounts, usernames, posts, likes,
@@ -9,7 +9,7 @@ Total time: about 10 minutes. Everything below uses Supabase's free tier.
 ## 1. Create the project (you do this part)
 
 1. Go to https://supabase.com and sign up (GitHub login is easiest).
-2. Click **New project**, name it `credora`, choose a strong database
+2. Click **New project**, name it `crescamus`, choose a strong database
    password (save it somewhere safe), pick the region closest to your users,
    and click **Create new project**. Wait ~2 minutes for it to provision.
 

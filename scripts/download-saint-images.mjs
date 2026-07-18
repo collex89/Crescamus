@@ -18,7 +18,7 @@ if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
 const enriched = JSON.parse(readFileSync(ENRICHED_PATH, 'utf-8'));
 
 async function fetchJSON(url, attempt = 1) {
-  const res = await fetch(url, { headers: { 'User-Agent': 'Credora-App/1.0 (image download script)' } });
+  const res = await fetch(url, { headers: { 'User-Agent': 'Crescamus-App/1.0 (image download script)' } });
   if (res.status === 429 && attempt <= 5) {
     const wait = attempt * 4000;
     console.log(`  (rate limited, waiting ${wait / 1000}s...)`);
@@ -49,7 +49,7 @@ for (const saint of enriched) {
     const thumb = Object.values(data.query.pages)[0]?.thumbnail;
     if (!thumb) throw new Error('no thumbnail returned');
 
-    const imgRes = await fetch(thumb.source, { headers: { 'User-Agent': 'Credora-App/1.0' } });
+    const imgRes = await fetch(thumb.source, { headers: { 'User-Agent': 'Crescamus-App/1.0' } });
     if (!imgRes.ok) throw new Error(`image fetch ${imgRes.status}`);
     const buf = Buffer.from(await imgRes.arrayBuffer());
     const ext = path.extname(new URL(thumb.source).pathname) || '.jpg';

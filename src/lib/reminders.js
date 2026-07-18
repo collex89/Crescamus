@@ -1,6 +1,6 @@
 // Real reminder scheduling using the browser Notification API.
 //
-// Honest limitation: this fires while Credora is open in a browser tab (or
+// Honest limitation: this fires while Crescamus is open in a browser tab (or
 // backgrounded, on platforms that keep JS timers alive) — it is not a true
 // always-on push notification that survives the app being fully closed.
 // That requires a native app + push infrastructure, which is a later phase

@@ -1,4 +1,4 @@
-// Real, substantive Privacy Policy and Terms of Service text for Credora.
+// Real, substantive Privacy Policy and Terms of Service text for Crescamus.
 // A few fields ([Business Name], governing-law jurisdiction) are left as
 // clearly-marked placeholders for you to fill in — and given this is a
 // social app handling accounts, messages, and personal data, get an actual
@@ -10,7 +10,7 @@ export const LAST_UPDATED = "July 2026";
 export const PRIVACY_POLICY = `
 Last updated: ${LAST_UPDATED}
 
-Credora ("we", "us", "the App") is a Catholic social platform. This policy explains what information we collect, how we use it, and the choices you have.
+Crescamus ("we", "us", "the App") is a Catholic social platform. This policy explains what information we collect, how we use it, and the choices you have.
 
 1. INFORMATION WE COLLECT
 
@@ -42,7 +42,7 @@ You can edit or remove your profile information, delete individual posts, and un
 
 7. CHILDREN'S PRIVACY
 
-Credora is not directed at children under 13, and we do not knowingly collect information from children under 13. If you believe a child has created an account, contact us and we will remove it.
+Crescamus is not directed at children under 13, and we do not knowingly collect information from children under 13. If you believe a child has created an account, contact us and we will remove it.
 
 8. CHANGES TO THIS POLICY
 
@@ -56,11 +56,11 @@ Questions about this policy or your data can be sent to [your contact email].
 export const TERMS_OF_SERVICE = `
 Last updated: ${LAST_UPDATED}
 
-Welcome to Credora. By creating an account or using the app, you agree to these Terms.
+Welcome to Crescamus. By creating an account or using the app, you agree to these Terms.
 
 1. ELIGIBILITY
 
-You must be at least 13 years old to use Credora. By creating an account, you confirm this is accurate.
+You must be at least 13 years old to use Crescamus. By creating an account, you confirm this is accurate.
 
 2. YOUR ACCOUNT
 
@@ -68,11 +68,11 @@ You're responsible for the security of your account and everything that happens 
 
 3. YOUR CONTENT
 
-You retain ownership of everything you post. By posting, you grant Credora a license to display, distribute, and store that content within the app so the service can function (showing your posts in feeds, search, and to people who follow you). You can delete your own posts at any time, which removes them from the app.
+You retain ownership of everything you post. By posting, you grant Crescamus a license to display, distribute, and store that content within the app so the service can function (showing your posts in feeds, search, and to people who follow you). You can delete your own posts at any time, which removes them from the app.
 
 4. COMMUNITY STANDARDS
 
-Credora is meant to be a peaceful, faith-centered space. The following are not permitted: harassment, hate speech, or bullying of any kind; impersonation; spam or unsolicited commercial content; sharing others' private information without consent; content that is obscene, violent, or unrelated to the spirit of the community; and any attempt to circumvent a block or account suspension.
+Crescamus is meant to be a peaceful, faith-centered space. The following are not permitted: harassment, hate speech, or bullying of any kind; impersonation; spam or unsolicited commercial content; sharing others' private information without consent; content that is obscene, violent, or unrelated to the spirit of the community; and any attempt to circumvent a block or account suspension.
 
 5. REPORTING AND ENFORCEMENT
 
@@ -84,11 +84,11 @@ Scripture text, saint biographies, and audio content provided in the app are sou
 
 7. NO WARRANTY
 
-Credora is provided "as is." We work to keep the app reliable and accurate but do not guarantee uninterrupted service or that all content is free of error.
+Crescamus is provided "as is." We work to keep the app reliable and accurate but do not guarantee uninterrupted service or that all content is free of error.
 
 8. LIMITATION OF LIABILITY
 
-To the fullest extent permitted by law, Credora and its operators are not liable for indirect, incidental, or consequential damages arising from your use of the app.
+To the fullest extent permitted by law, Crescamus and its operators are not liable for indirect, incidental, or consequential damages arising from your use of the app.
 
 9. TERMINATION
 
