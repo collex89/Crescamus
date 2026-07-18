@@ -2334,6 +2334,34 @@ textarea.form-input {
   justify-content: center;
   background: rgba(var(--primary-rgb), 0.05);
   color: var(--primary);
+  flex-shrink: 0;
+}
+
+/* Each notification type gets its own color, so the list reads at a
+   glance instead of every row looking identical. */
+.notification-icon-indicator.like {
+  background: rgba(198, 40, 40, 0.12);
+  color: #C62828;
+}
+
+.notification-icon-indicator.comment {
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563EB;
+}
+
+.notification-icon-indicator.follow {
+  background: rgba(124, 58, 237, 0.12);
+  color: #7C3AED;
+}
+
+.notification-icon-indicator.prayer {
+  background: rgba(22, 163, 74, 0.12);
+  color: #16A34A;
+}
+
+.notification-icon-indicator.saint {
+  background: rgba(212, 175, 55, 0.15);
+  color: #B8901F;
 }
 
 .notification-content {

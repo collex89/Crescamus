@@ -1195,6 +1195,184 @@ export default function App() {
     </div>
   );
 
+  // Shared by the main feed and the profile's "My Posts" tab, so a post gets
+  // the exact same like/comment/reshare/share treatment no matter where it's
+  // viewed from -- previously the profile tab had its own stripped-down copy
+  // with static counts and no working actions.
+  const renderPostCard = (post) => (
+    <div key={post.id} className="card">
+      {post.resharedBy && (
+        <div className="reshare-banner">
+          <Icons.Repost /> {post.resharedBy.username === myUsername ? 'You' : post.resharedBy.name} reshared
+        </div>
+      )}
+      {post.quoteText && (
+        <p className="quote-reshare-text">{post.quoteText}</p>
+      )}
+      <div className="feed-header">
+        <div className="feed-user-info" onClick={() => openPersonProfile(post.user.username)} style={{ cursor: 'pointer' }}>
+          <img src={post.user.avatar} className="feed-user-avatar" alt={post.user.name} />
+          <div>
+            <div className="feed-user-name">
+              {post.user.name} {post.user.isVerified && <Icons.Verified />} <span className="feed-username">@{post.user.username}</span>
+            </div>
+            <div className="feed-user-parish"><Icons.Church /> {post.user.parish}</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {(() => {
+            const author = users.find(u => u.username === post.user.username);
+            return author && !author.isFollowing ? (
+              <button className="follow-chip" onClick={() => toggleFollowUser(author.id)}>
+                {author.isFollowedBy ? 'Follow Back' : 'Follow'}
+              </button>
+            ) : null;
+          })()}
+          <span className="feed-time">{post.time}</span>
+          <div className="post-menu-wrap">
+            <button
+              className="icon-btn"
+              onClick={() => setPostMenuOpen(postMenuOpen === post.id ? null : post.id)}
+            >
+              <Icons.MoreVertical />
+            </button>
+            {postMenuOpen === post.id && (
+              <div className="post-menu-dropdown">
+                {post.resharedBy?.username === myUsername ? (
+                  <button className="post-menu-item danger" onClick={() => handleUndoReshare(post)}>
+                    <Icons.Trash /> Remove Repost
+                  </button>
+                ) : post.user.username === myUsername ? (
+                  <>
+                    <button className="post-menu-item" onClick={() => openEditPost(post)}>
+                      <Icons.Edit /> Edit Post
+                    </button>
+                    <button className="post-menu-item danger" onClick={() => handleDeletePost(post.originalPostId)}>
+                      <Icons.Trash /> Delete Post
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {(() => {
+                      const author = users.find(u => u.username === post.user.username);
+                      const muted = author && mutedUserIds.has(author.id);
+                      return (
+                        <button className="post-menu-item" onClick={() => author && toggleMuteUser(author.id)}>
+                          <Icons.VolumeOff /> {muted ? 'Unmute' : 'Mute'} @{post.user.username}
+                        </button>
+                      );
+                    })()}
+                    <button
+                      className="post-menu-item"
+                      onClick={() => {
+                        const author = users.find(u => u.username === post.user.username);
+                        openReport({ postId: post.originalPostId, userId: author?.id, label: `${post.user.name}'s post` });
+                      }}
+                    >
+                      <Icons.Flag /> Report Post
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="feed-text" onClick={() => setActivePostId(post.id)} style={{ cursor: 'pointer' }}>{renderFormattedText(post.text)}</div>
+      {post.video && <video src={post.video} className="feed-image" controls playsInline />}
+      {post.image && <img src={post.image} className="feed-image" alt="post content" onClick={() => setActivePostId(post.id)} style={{ cursor: 'pointer' }} />}
+
+      <div className="feed-actions">
+        <button className={`feed-action-btn ${post.isLiked ? 'liked' : ''}`} onClick={() => handleLikePost(post.originalPostId)}>
+          <Icons.Heart fill={post.isLiked} />
+          <span>{post.likes}</span>
+        </button>
+
+        <button className="feed-action-btn" onClick={() => setActiveCommentPost(activeCommentPost === post.id ? null : post.id)}>
+          <Icons.Comment />
+          <span>{post.commentsCount}</span>
+        </button>
+
+        {post.user.username !== myUsername ? (
+          <div className="post-menu-wrap">
+            <button className="feed-action-btn" onClick={() => setReshareMenuOpen(reshareMenuOpen === post.id ? null : post.id)} title="Reshare">
+              <Icons.Repost />
+              <span>{post.resharesCount || 0}</span>
+            </button>
+            {reshareMenuOpen === post.id && (
+              <div className="post-menu-dropdown">
+                <button className="post-menu-item" onClick={() => { handleReshare(post); setReshareMenuOpen(null); }}>
+                  <Icons.Repost /> Repost
+                </button>
+                <button className="post-menu-item" onClick={() => { setQuoteReshareTarget(post); setReshareMenuOpen(null); }}>
+                  <Icons.Edit /> Quote
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <span className="feed-action-btn" title="Reposts" style={{ cursor: 'default' }}>
+            <Icons.Repost />
+            <span>{post.resharesCount || 0}</span>
+          </span>
+        )}
+
+        <button className={`feed-action-btn ${post.isBookmarked ? 'bookmarked' : ''}`} onClick={() => handleBookmarkPost(post.originalPostId)}>
+          <Icons.Bookmark fill={post.isBookmarked} />
+          <span>Save</span>
+        </button>
+
+        <div className="post-menu-wrap">
+          <button className="feed-action-btn" onClick={() => setShareMenuOpen(shareMenuOpen === post.id ? null : post.id)} title="Share">
+            <Icons.Share />
+          </button>
+          {shareMenuOpen === post.id && (
+            <div className="post-menu-dropdown">
+              {typeof navigator !== 'undefined' && navigator.share && (
+                <button className="post-menu-item" onClick={() => shareViaNative(post)}>
+                  <Icons.Share /> More options...
+                </button>
+              )}
+              <button className="post-menu-item" onClick={() => shareToX(post)}>
+                <Icons.XLogo /> X
+              </button>
+              <button className="post-menu-item" onClick={() => shareToWhatsApp(post)}>
+                <Icons.WhatsApp /> WhatsApp
+              </button>
+              <button className="post-menu-item" onClick={() => shareToFacebook(post)}>
+                <Icons.Facebook /> Facebook
+              </button>
+              <button className="post-menu-item" onClick={() => copyShareLink(post)}>
+                <Icons.LinkIcon /> {copiedShareId === post.id ? 'Copied!' : 'Copy Link'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Comments Collapsed Panel */}
+      {activeCommentPost === post.id && (
+        <div className="comments-drawer">
+          {post.comments.map((comment) => renderCommentThread(post.originalPostId, comment))}
+          <div className="comment-input-box">
+            <input
+              type="text"
+              className="comment-input"
+              placeholder="Share your reflection..."
+              value={commentInputs[post.originalPostId] || ''}
+              onChange={(e) => setCommentInputs({ ...commentInputs, [post.originalPostId]: e.target.value })}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAddComment(post.originalPostId); }}
+            />
+            <button className="comment-submit-btn" onClick={() => handleAddComment(post.originalPostId)}>
+              <Icons.ArrowRight />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   // Re-fetches the feed from the server so newly-posted content from other
   // users shows up without a full page reload. Demo mode has no server to
   // pull from, so it just scrolls back to the top.
@@ -2285,7 +2463,7 @@ export default function App() {
                           openPersonProfile(notif.actorUsername);
                         }
                       }}>
-                        <div className="notification-icon-indicator">
+                        <div className={`notification-icon-indicator ${notif.type}`}>
                           {notif.type === 'like' && <Icons.Heart />}
                           {notif.type === 'comment' && <Icons.Comment />}
                           {notif.type === 'prayer' && <Icons.Rosary />}
@@ -2560,17 +2738,7 @@ export default function App() {
                         <p>No posts shared yet.</p>
                       </div>
                     ) : (
-                      personPosts.map(post => (
-                        <div key={post.id} className="card" style={{ padding: '14px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                            <span style={{ fontWeight: 600, fontSize: '12px' }}>{post.user.name}</span>
-                            <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{post.time}</span>
-                          </div>
-                          <div style={{ fontSize: '12.5px', color: 'var(--text)', marginBottom: (post.image || post.video) ? '10px' : 0 }}>{renderFormattedText(post.text)}</div>
-                          {post.video && <video src={post.video} className="feed-image" controls playsInline style={{ marginBottom: 0 }} />}
-                          {post.image && <img src={post.image} className="feed-image" alt="post content" style={{ marginBottom: 0 }} />}
-                        </div>
-                      ))
+                      personPosts.map(post => renderPostCard(post))
                     )}
                   </div>
                 </div>
@@ -3567,179 +3735,7 @@ export default function App() {
                   )}
 
                   {/* Social Feed List */}
-                  {visiblePosts.map(post => (
-                    <div key={post.id} className="card">
-                      {post.resharedBy && (
-                        <div className="reshare-banner">
-                          <Icons.Repost /> {post.resharedBy.username === myUsername ? 'You' : post.resharedBy.name} reshared
-                        </div>
-                      )}
-                      {post.quoteText && (
-                        <p className="quote-reshare-text">{post.quoteText}</p>
-                      )}
-                      <div className="feed-header">
-                        <div className="feed-user-info" onClick={() => openPersonProfile(post.user.username)} style={{ cursor: 'pointer' }}>
-                          <img src={post.user.avatar} className="feed-user-avatar" alt={post.user.name} />
-                          <div>
-                            <div className="feed-user-name">
-                              {post.user.name} {post.user.isVerified && <Icons.Verified />} <span className="feed-username">@{post.user.username}</span>
-                            </div>
-                            <div className="feed-user-parish"><Icons.Church /> {post.user.parish}</div>
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          {(() => {
-                            const author = users.find(u => u.username === post.user.username);
-                            return author && !author.isFollowing ? (
-                              <button className="follow-chip" onClick={() => toggleFollowUser(author.id)}>
-                                {author.isFollowedBy ? 'Follow Back' : 'Follow'}
-                              </button>
-                            ) : null;
-                          })()}
-                          <span className="feed-time">{post.time}</span>
-                          <div className="post-menu-wrap">
-                            <button
-                              className="icon-btn"
-                              onClick={() => setPostMenuOpen(postMenuOpen === post.id ? null : post.id)}
-                            >
-                              <Icons.MoreVertical />
-                            </button>
-                            {postMenuOpen === post.id && (
-                              <div className="post-menu-dropdown">
-                                {post.resharedBy?.username === myUsername ? (
-                                  <button className="post-menu-item danger" onClick={() => handleUndoReshare(post)}>
-                                    <Icons.Trash /> Remove Repost
-                                  </button>
-                                ) : post.user.username === myUsername ? (
-                                  <>
-                                    <button className="post-menu-item" onClick={() => openEditPost(post)}>
-                                      <Icons.Edit /> Edit Post
-                                    </button>
-                                    <button className="post-menu-item danger" onClick={() => handleDeletePost(post.originalPostId)}>
-                                      <Icons.Trash /> Delete Post
-                                    </button>
-                                  </>
-                                ) : (
-                                  <>
-                                    {(() => {
-                                      const author = users.find(u => u.username === post.user.username);
-                                      const muted = author && mutedUserIds.has(author.id);
-                                      return (
-                                        <button className="post-menu-item" onClick={() => author && toggleMuteUser(author.id)}>
-                                          <Icons.VolumeOff /> {muted ? 'Unmute' : 'Mute'} @{post.user.username}
-                                        </button>
-                                      );
-                                    })()}
-                                    <button
-                                      className="post-menu-item"
-                                      onClick={() => {
-                                        const author = users.find(u => u.username === post.user.username);
-                                        openReport({ postId: post.originalPostId, userId: author?.id, label: `${post.user.name}'s post` });
-                                      }}
-                                    >
-                                      <Icons.Flag /> Report Post
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="feed-text" onClick={() => setActivePostId(post.id)} style={{ cursor: 'pointer' }}>{renderFormattedText(post.text)}</div>
-                      {post.video && <video src={post.video} className="feed-image" controls playsInline />}
-                      {post.image && <img src={post.image} className="feed-image" alt="post content" onClick={() => setActivePostId(post.id)} style={{ cursor: 'pointer' }} />}
-
-                      <div className="feed-actions">
-                        <button className={`feed-action-btn ${post.isLiked ? 'liked' : ''}`} onClick={() => handleLikePost(post.originalPostId)}>
-                          <Icons.Heart fill={post.isLiked} />
-                          <span>{post.likes}</span>
-                        </button>
-
-                        <button className="feed-action-btn" onClick={() => setActiveCommentPost(activeCommentPost === post.id ? null : post.id)}>
-                          <Icons.Comment />
-                          <span>{post.commentsCount}</span>
-                        </button>
-
-                        {post.user.username !== myUsername ? (
-                          <div className="post-menu-wrap">
-                            <button className="feed-action-btn" onClick={() => setReshareMenuOpen(reshareMenuOpen === post.id ? null : post.id)} title="Reshare">
-                              <Icons.Repost />
-                              <span>{post.resharesCount || 0}</span>
-                            </button>
-                            {reshareMenuOpen === post.id && (
-                              <div className="post-menu-dropdown">
-                                <button className="post-menu-item" onClick={() => { handleReshare(post); setReshareMenuOpen(null); }}>
-                                  <Icons.Repost /> Repost
-                                </button>
-                                <button className="post-menu-item" onClick={() => { setQuoteReshareTarget(post); setReshareMenuOpen(null); }}>
-                                  <Icons.Edit /> Quote
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="feed-action-btn" title="Reposts" style={{ cursor: 'default' }}>
-                            <Icons.Repost />
-                            <span>{post.resharesCount || 0}</span>
-                          </span>
-                        )}
-
-                        <button className={`feed-action-btn ${post.isBookmarked ? 'bookmarked' : ''}`} onClick={() => handleBookmarkPost(post.originalPostId)}>
-                          <Icons.Bookmark fill={post.isBookmarked} />
-                          <span>Save</span>
-                        </button>
-
-                        <div className="post-menu-wrap">
-                          <button className="feed-action-btn" onClick={() => setShareMenuOpen(shareMenuOpen === post.id ? null : post.id)} title="Share">
-                            <Icons.Share />
-                          </button>
-                          {shareMenuOpen === post.id && (
-                            <div className="post-menu-dropdown">
-                              {typeof navigator !== 'undefined' && navigator.share && (
-                                <button className="post-menu-item" onClick={() => shareViaNative(post)}>
-                                  <Icons.Share /> More options...
-                                </button>
-                              )}
-                              <button className="post-menu-item" onClick={() => shareToX(post)}>
-                                <Icons.XLogo /> X
-                              </button>
-                              <button className="post-menu-item" onClick={() => shareToWhatsApp(post)}>
-                                <Icons.WhatsApp /> WhatsApp
-                              </button>
-                              <button className="post-menu-item" onClick={() => shareToFacebook(post)}>
-                                <Icons.Facebook /> Facebook
-                              </button>
-                              <button className="post-menu-item" onClick={() => copyShareLink(post)}>
-                                <Icons.LinkIcon /> {copiedShareId === post.id ? 'Copied!' : 'Copy Link'}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Comments Collapsed Panel */}
-                      {activeCommentPost === post.id && (
-                        <div className="comments-drawer">
-                          {post.comments.map((comment) => renderCommentThread(post.originalPostId, comment))}
-                          <div className="comment-input-box">
-                            <input
-                              type="text"
-                              className="comment-input"
-                              placeholder="Share your reflection..."
-                              value={commentInputs[post.originalPostId] || ''}
-                              onChange={(e) => setCommentInputs({ ...commentInputs, [post.originalPostId]: e.target.value })}
-                              onKeyDown={(e) => { if (e.key === 'Enter') handleAddComment(post.originalPostId); }}
-                            />
-                            <button className="comment-submit-btn" onClick={() => handleAddComment(post.originalPostId)}>
-                              <Icons.ArrowRight />
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                  {visiblePosts.map(post => renderPostCard(post))}
                 </div>
               )}
 
@@ -4165,53 +4161,7 @@ export default function App() {
                           <p>You haven't shared anything yet. Tap the + on Home to post.</p>
                         </div>
                       ) : (
-                        posts.filter(p => belongsToProfile(p, myUsername)).map(post => (
-                          <div key={post.id} className="card" style={{ padding: '14px', position: 'relative' }}>
-                            {post.resharedBy && (
-                              <div className="reshare-banner">
-                                <Icons.Repost /> You reshared
-                              </div>
-                            )}
-                            {post.quoteText && (
-                              <p className="quote-reshare-text">{post.quoteText}</p>
-                            )}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                              <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
-                                {post.resharedBy && <>{post.user.name} · </>}{post.time}
-                              </span>
-                              <div className="post-menu-wrap">
-                                <button className="icon-btn" onClick={() => setPostMenuOpen(postMenuOpen === post.id ? null : post.id)}>
-                                  <Icons.MoreVertical />
-                                </button>
-                                {postMenuOpen === post.id && (
-                                  <div className="post-menu-dropdown">
-                                    {post.resharedBy ? (
-                                      <button className="post-menu-item danger" onClick={() => handleUndoReshare(post)}>
-                                        <Icons.Trash /> Remove Repost
-                                      </button>
-                                    ) : (
-                                      <>
-                                        <button className="post-menu-item" onClick={() => openEditPost(post)}>
-                                          <Icons.Edit /> Edit Post
-                                        </button>
-                                        <button className="post-menu-item danger" onClick={() => handleDeletePost(post.originalPostId)}>
-                                          <Icons.Trash /> Delete Post
-                                        </button>
-                                      </>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <div style={{ fontSize: '12.5px', color: 'var(--text)', marginBottom: (post.image || post.video) ? '10px' : 0 }}>{renderFormattedText(post.text)}</div>
-                            {post.video && <video src={post.video} className="feed-image" controls playsInline style={{ marginBottom: 0 }} />}
-                            {post.image && <img src={post.image} className="feed-image" alt="post content" style={{ marginBottom: 0 }} />}
-                            <div style={{ display: 'flex', gap: '16px', marginTop: '10px', fontSize: '11px', color: 'var(--text-secondary)' }}>
-                              <span><Icons.Heart fill={post.isLiked} /> {post.likes}</span>
-                              <span><Icons.Comment /> {post.commentsCount}</span>
-                            </div>
-                          </div>
-                        ))
+                        posts.filter(p => belongsToProfile(p, myUsername)).map(post => renderPostCard(post))
                       )}
                     </div>
                   )}
