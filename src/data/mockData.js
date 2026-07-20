@@ -600,6 +600,5 @@ export const AUDIO_TRACKS = [
 export const STORIES = [
   { id: "verse", title: "Daily Verse", label: "Read", color: "linear-gradient(135deg, #1E3A8A, #3B82F6)", icon: "BookOpen" },
   { id: "reminder", title: "Prayer Time", label: "Pray", color: "linear-gradient(135deg, #10B981, #059669)", icon: "Rosary" },
-  { id: "news", title: "Church News", label: "Learn", color: "linear-gradient(135deg, #EC4899, #D946EF)", icon: "Notification" },
-  { id: "community", title: "Community", label: "Join", color: "linear-gradient(135deg, #8B5CF6, #6366F1)", icon: "Users" }
+  { id: "news", title: "Church News", label: "Learn", color: "linear-gradient(135deg, #EC4899, #D946EF)", icon: "Notification" }
 ];
