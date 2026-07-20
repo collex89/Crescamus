@@ -615,6 +615,25 @@ export async function updateRemindersEnabled(userId, flags) {
   return supabase.from('profiles').update({ reminders_enabled: flags }).eq('id', userId);
 }
 
+// Sent once per device, whenever it changes -- the reminder-sending Edge
+// Function has no device of its own to ask "what time is it for you", so it
+// needs this to know when e.g. 6:00 AM actually is for a given user.
+export async function updateMyTimezone(userId, timezone) {
+  if (!timezone) return { error: null };
+  return supabase.from('profiles').update({ timezone }).eq('id', userId);
+}
+
+// One row per device/browser that's granted push permission. onConflict on
+// endpoint (not user+device) because the endpoint itself is what's unique --
+// re-subscribing the same browser reliably returns the same endpoint.
+export async function upsertPushSubscription(userId, subscription) {
+  if (!subscription) return { error: null };
+  return supabase.from('push_subscriptions').upsert(
+    { user_id: userId, endpoint: subscription.endpoint, p256dh: subscription.p256dh, auth: subscription.auth },
+    { onConflict: 'endpoint' }
+  );
+}
+
 // ------------------------------------------------------------- settings
 
 export async function requestPasswordReset(email) {

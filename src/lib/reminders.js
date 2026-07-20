@@ -38,6 +38,52 @@ async function ensureServiceWorker() {
   }
 }
 
+// applicationServerKey wants a Uint8Array, not the base64url string VAPID
+// keys are normally handed out as.
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = window.atob(base64);
+  return Uint8Array.from([...raw].map((char) => char.charCodeAt(0)));
+}
+
+// Subscribes this browser to Web Push so reminders can arrive even with the
+// app fully closed (see supabase/functions/send-reminder-pushes). Returns
+// the subscription in the plain shape api.upsertPushSubscription expects,
+// or null if push isn't supported/permitted here — callers should treat
+// that as "background push isn't available on this device," not an error;
+// the tab-open scheduler below still works regardless.
+export async function subscribeToPushNotifications() {
+  if (typeof window === 'undefined' || !('PushManager' in window)) return null;
+  const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+  if (!vapidKey) return null;
+
+  const reg = await ensureServiceWorker();
+  if (!reg) return null;
+
+  try {
+    let subscription = await reg.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey)
+      });
+    }
+    const json = subscription.toJSON();
+    return { endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth };
+  } catch {
+    return null; // permission denied, browser quirk, etc. -- fail quietly
+  }
+}
+
+export function getDeviceTimezone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
+}
+
 function nowMinutesSinceMidnight() {
   const d = new Date();
   return d.getHours() * 60 + d.getMinutes();

@@ -1,0 +1,12 @@
+-- ====================================================================
+-- Crescamus migration 017: store the pg_cron shared secret in Vault
+-- This is NOT run as a normal migration -- the actual secret value must
+-- never be committed to git. Run this manually once, with the real value
+-- substituted in, via SQL Editor -> New query -> Run:
+--
+--   select vault.create_secret('<the CRON_SECRET value you set with
+--     `supabase secrets set CRON_SECRET=...`>', 'cron_secret');
+--
+-- (Already done for this project's live database as part of setting up
+-- migration 016 -- this file documents the step, it doesn't redo it.)
+-- ====================================================================

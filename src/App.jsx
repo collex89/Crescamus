@@ -6,7 +6,7 @@ import { loadBibleChapter } from './lib/bible';
 import { getDailyVerse } from './data/dailyVerses';
 import { PRIVACY_POLICY, TERMS_OF_SERVICE } from './data/legalContent';
 import { MISSION, ABOUT_FEATURES, CONTENT_SOURCING_NOTE } from './data/aboutContent';
-import { startReminderScheduler, requestNotificationPermission, getNotificationPermission, isNotificationSupported, unlockAlarmAudio } from './lib/reminders';
+import { startReminderScheduler, requestNotificationPermission, getNotificationPermission, isNotificationSupported, unlockAlarmAudio, subscribeToPushNotifications, getDeviceTimezone } from './lib/reminders';
 import { renderFormattedText, wrapSelection, prefixLines, insertAtCursor } from './lib/textFormatting';
 import { downloadVerseImage } from './lib/verseImage';
 
@@ -1634,9 +1634,22 @@ export default function App() {
   // Turning a reminder on for the first time is also the natural moment to
   // ask for notification permission, rather than an out-of-context prompt.
   const maybeRequestNotificationPermission = async () => {
-    if (!isNotificationSupported() || notificationPermission === 'granted') return;
-    const result = await requestNotificationPermission();
-    setNotificationPermission(result);
+    if (!isNotificationSupported()) return;
+    let permission = notificationPermission;
+    if (permission !== 'granted') {
+      permission = await requestNotificationPermission();
+      setNotificationPermission(permission);
+    }
+    // Also covers people who granted permission before background push
+    // existed -- this call is cheap and idempotent (getSubscription() first),
+    // so it's safe to run every time this fires, not just on a fresh grant.
+    if (permission === 'granted' && isSupabaseConfigured && session) {
+      subscribeToPushNotifications().then((subscription) => {
+        if (subscription) api.upsertPushSubscription(session.user.id, subscription).catch(() => {});
+      });
+      const timezone = getDeviceTimezone();
+      if (timezone) api.updateMyTimezone(session.user.id, timezone).catch(() => {});
+    }
   };
 
   const toggleReminderEnabled = (key) => {
