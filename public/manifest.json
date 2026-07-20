@@ -1,0 +1,25 @@
+{
+  "name": "Crescamus",
+  "short_name": "Crescamus",
+  "description": "Crescamus is a premium, elegant Catholic social platform. Share faith-filled content, read the Catholic Bible, discover saints, listen to Catholic audio, and build a consistent prayer life.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FAFAF8",
+  "theme_color": "#1E3A8A",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
