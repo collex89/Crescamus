@@ -439,6 +439,7 @@ export default function App() {
   const [splashActive, setSplashActive] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authMode, setAuthMode] = useState('login'); // 'login' | 'register'
+  const [welcomeStage, setWelcomeStage] = useState('hero'); // 'hero' | 'chooser' | 'form'
   
   // Auth Inputs
   const [email, setEmail] = useState('');
@@ -2215,10 +2216,93 @@ export default function App() {
           </div>
         )}
 
-        {/* ------------------ VIEW 2: AUTH SCREEN ------------------ */}
-        {!splashActive && !isLoggedIn && !passwordRecoveryMode && (
-          <div className="auth-container scrollable">
+        {/* ------------------ VIEW 2a: WELCOME HERO + GET STARTED SHEET ------------------ */}
+        {!splashActive && !isLoggedIn && !passwordRecoveryMode && welcomeStage !== 'form' && (
+          <div className="welcome-container">
+            <div className="hero-orbit-wrap">
+              <div className="hero-orbit-ring hero-orbit-ring--outer" />
+              <div className="hero-orbit-ring hero-orbit-ring--inner" />
+              <div className="hero-orbit-spinner">
+                {ABOUT_FEATURES.map((feature, i) => {
+                  const angle = (360 / ABOUT_FEATURES.length) * i;
+                  const FeatureIcon = Icons[feature.icon];
+                  return (
+                    <div key={feature.title} className="hero-orbit-item" style={{ transform: `rotate(${angle}deg) translateY(-124px) rotate(${-angle}deg)` }}>
+                      <div className={`hero-orbit-badge hero-orbit-badge--${i}`} title={feature.title}>
+                        {FeatureIcon && <FeatureIcon />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="hero-center-mark">
+                <img src="/logo.svg" alt="Crescamus logo" />
+              </div>
+            </div>
+
+            <h1 className="welcome-title">Crescamus</h1>
+            <p className="welcome-tagline">Growing Together in Christ</p>
+
+            {welcomeStage === 'hero' && (
+              <button className="auth-btn welcome-get-started-btn" onClick={() => setWelcomeStage('chooser')}>
+                Get Started
+              </button>
+            )}
+
+            {welcomeStage === 'chooser' && (
+              <>
+                <div className="welcome-scrim animate-fade-in" onClick={() => setWelcomeStage('hero')} />
+                <div className="welcome-sheet">
+                  <div className="welcome-sheet-header">
+                    <span className="welcome-sheet-icon"><Icons.Sparkles /></span>
+                    <button className="icon-btn" onClick={() => setWelcomeStage('hero')} aria-label="Close">
+                      <Icons.Close />
+                    </button>
+                  </div>
+                  <h3 className="welcome-sheet-title">Get Started</h3>
+                  <p className="welcome-sheet-desc">
+                    Sign in or create an account to begin praying, reading Scripture, and growing with the community.
+                  </p>
+
+                  <button className="auth-btn" onClick={() => setWelcomeStage('form')}>
+                    Continue with Email
+                  </button>
+
+                  <div className="welcome-sheet-social-row">
+                    <button className="social-auth-btn" onClick={async () => {
+                      if (isSupabaseConfigured) {
+                        const { error } = await api.signInWithProvider('google');
+                        if (error) setAuthError(error.message);
+                        return;
+                      }
+                      setUsername("Google Christian"); setMyUsername(generateUniqueUsername("google.christian")); setIsLoggedIn(true);
+                    }}>
+                      <Icons.Globe />
+                    </button>
+                    <button className="social-auth-btn" onClick={async () => {
+                      if (isSupabaseConfigured) {
+                        const { error } = await api.signInWithProvider('apple');
+                        if (error) setAuthError(error.message);
+                        return;
+                      }
+                      setUsername("Apple Catholic"); setMyUsername(generateUniqueUsername("apple.catholic")); setIsLoggedIn(true);
+                    }}>
+                      <Icons.Apple />
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ------------------ VIEW 2b: AUTH FORM ------------------ */}
+        {!splashActive && !isLoggedIn && !passwordRecoveryMode && welcomeStage === 'form' && (
+          <div className="auth-container scrollable animate-fade-in">
             <div className="auth-header">
+              <button className="icon-btn welcome-back-btn" onClick={() => setWelcomeStage('chooser')} aria-label="Back">
+                <Icons.ChevronLeft />
+              </button>
               <div className="auth-logo-symbol">
                 <img src="/logo.svg" alt="Crescamus logo" className="brand-logo-img" />
               </div>
@@ -2345,29 +2429,6 @@ export default function App() {
                 {authLoading ? 'Please wait...' : authMode === 'login' ? 'Sign In' : 'Sign Up'}
               </button>
             </form>
-
-            <div className="auth-divider">or continue with</div>
-
-            <button className="social-auth-btn" onClick={async () => {
-              if (isSupabaseConfigured) {
-                const { error } = await api.signInWithProvider('google');
-                if (error) setAuthError(error.message);
-                return;
-              }
-              setUsername("Google Christian"); setMyUsername(generateUniqueUsername("google.christian")); setIsLoggedIn(true);
-            }}>
-              <Icons.Globe /> Continue with Google
-            </button>
-            <button className="social-auth-btn" onClick={async () => {
-              if (isSupabaseConfigured) {
-                const { error } = await api.signInWithProvider('apple');
-                if (error) setAuthError(error.message);
-                return;
-              }
-              setUsername("Apple Catholic"); setMyUsername(generateUniqueUsername("apple.catholic")); setIsLoggedIn(true);
-            }}>
-              <Icons.Apple /> Continue with Apple
-            </button>
 
             <div className="auth-footer">
               {authMode === 'login' ? (

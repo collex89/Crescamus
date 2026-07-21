@@ -479,6 +479,211 @@ p {
 }
 
 /* ----------------------------------------------------
+   Welcome Hero + Get Started Sheet (pre-auth)
+   ---------------------------------------------------- */
+.welcome-container {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  overflow: hidden;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.hero-orbit-wrap {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.hero-orbit-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px dashed rgba(var(--secondary-rgb), 0.35);
+}
+
+.hero-orbit-ring--outer { inset: 0; }
+.hero-orbit-ring--inner {
+  inset: 38px;
+  border-style: solid;
+  border-color: rgba(var(--primary-rgb), 0.12);
+}
+
+.hero-orbit-spinner {
+  position: absolute;
+  inset: 0;
+  animation: heroOrbitSpin 36s linear infinite;
+}
+
+.hero-orbit-item {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+}
+
+.hero-orbit-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  border: 2px solid var(--border);
+  transform: translate(-50%, -50%);
+  animation: heroOrbitCounterSpin 36s linear infinite;
+}
+
+.hero-orbit-badge--0 { color: #C62828; border-color: rgba(198, 40, 40, 0.35); }
+.hero-orbit-badge--1 { color: #2563EB; border-color: rgba(37, 99, 235, 0.35); }
+.hero-orbit-badge--2 { color: #7C3AED; border-color: rgba(124, 58, 237, 0.35); }
+.hero-orbit-badge--3 { color: #16A34A; border-color: rgba(22, 163, 74, 0.35); }
+.hero-orbit-badge--4 { color: #B8901F; border-color: rgba(212, 175, 55, 0.35); }
+
+.hero-center-mark {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(var(--secondary-rgb), 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: heroPulse 3.5s ease-in-out infinite;
+}
+
+.hero-center-mark img {
+  width: 62%;
+  height: 62%;
+  object-fit: contain;
+}
+
+.welcome-title {
+  font-size: 30px;
+  font-weight: 700;
+  margin: 4px 0 6px;
+  text-align: center;
+}
+
+.welcome-tagline {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.welcome-get-started-btn {
+  width: 100%;
+  max-width: 320px;
+}
+
+.welcome-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 10;
+}
+
+.welcome-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 11;
+  background: var(--surface);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: 20px 24px calc(24px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15);
+  animation: sheetSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.welcome-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.welcome-sheet-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(var(--secondary-rgb), 0.15);
+  color: var(--secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.welcome-sheet-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.welcome-sheet-desc {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin: 0 0 20px;
+}
+
+.welcome-sheet-social-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.welcome-sheet-social-row .social-auth-btn {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.welcome-back-btn {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+@keyframes heroOrbitSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes heroOrbitCounterSpin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(-360deg); }
+}
+
+@keyframes heroPulse {
+  0%, 100% { box-shadow: var(--shadow-lg), 0 0 0 0 rgba(var(--secondary-rgb), 0.25); }
+  50% { box-shadow: var(--shadow-lg), 0 0 0 14px rgba(var(--secondary-rgb), 0); }
+}
+
+@keyframes sheetSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-orbit-spinner, .hero-orbit-badge, .hero-center-mark {
+    animation: none;
+  }
+}
+
+/* ----------------------------------------------------
    Header Navigation / AppBar
    ---------------------------------------------------- */
 .app-header {
