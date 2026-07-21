@@ -2242,6 +2242,7 @@ export default function App() {
 
             <h1 className="welcome-title">Crescamus</h1>
             <p className="welcome-tagline">Growing Together in Christ</p>
+            <p className="welcome-vibe">A quiet place to grow in faith together: Scripture, the saints, sacred music, and a community of real people praying, not just posting.</p>
 
             {welcomeStage === 'hero' && (
               <button className="auth-btn welcome-get-started-btn" onClick={() => setWelcomeStage('chooser')}>
