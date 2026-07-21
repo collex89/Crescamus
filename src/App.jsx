@@ -2226,6 +2226,26 @@ export default function App() {
               <p className="auth-subtitle">Join the Catholic digital sanctuary</p>
             </div>
 
+            {/* A quick "what is this" for anyone landing here for the first
+                time, before they've committed to signing in or up. Reuses
+                the same feature list as Settings -> About so there's only
+                one place that copy is written. */}
+            <div className="stories-container" style={{ justifyContent: 'center', marginBottom: '20px', flexShrink: 0 }}>
+              {ABOUT_FEATURES.map((feature) => {
+                const FeatureIcon = Icons[feature.icon];
+                return (
+                  <div key={feature.title} className="story-item" style={{ cursor: 'default' }}>
+                    <div className="story-ring unread">
+                      <div className="story-avatar-mock">
+                        {FeatureIcon && <FeatureIcon />}
+                      </div>
+                    </div>
+                    <span className="story-title">{feature.title}</span>
+                  </div>
+                );
+              })}
+            </div>
+
             <form className="auth-form" onSubmit={handleAuthSubmit}>
               {authMode === 'register' && (
                 <>
