@@ -326,6 +326,12 @@ p {
   animation: slideUp 0.5s ease-out;
 }
 
+.auth-topbar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
 .auth-header {
   text-align: center;
   margin-bottom: 32px;
@@ -658,12 +664,6 @@ p {
 .welcome-sheet-social-row .social-auth-btn {
   flex: 1;
   margin-bottom: 0;
-}
-
-.welcome-back-btn {
-  position: absolute;
-  top: 0;
-  left: 0;
 }
 
 @keyframes heroOrbitSpin {
@@ -1883,6 +1883,14 @@ input:checked + .slider:before {
   gap: 28px;
 }
 
+.player-swipe-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  touch-action: pan-y;
+}
+
 .player-cover-large {
   width: 220px;
   height: 220px;
@@ -1954,7 +1962,7 @@ input:checked + .slider:before {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 28px;
+  gap: 16px;
   margin-top: 10px;
 }
 
@@ -1998,6 +2006,18 @@ input:checked + .slider:before {
 
 .control-item-widget span {
   font-weight: 600;
+}
+
+.control-item-widget div {
+  max-width: 90px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.skip-btn svg {
+  width: 20px;
+  height: 20px;
 }
 
 .seek-btn {
@@ -3328,6 +3348,20 @@ textarea.form-input {
 .chat-thread-view {
   display: flex;
   flex-direction: column;
+  /* Above .person-view (1850) -- opening a chat from a profile's Message
+     button leaves that profile's state untouched underneath (see openChat),
+     so the chat needs to out-rank it to actually be the one showing. */
+  z-index: 1900;
+}
+
+.person-view {
+  /* Above .notifications-panel (1500) and the base .saint-details-view
+     tier (1800) -- opening a profile from Search, a notification, the
+     Inbox, or a chat header deliberately leaves that origin's state
+     untouched underneath (see openPersonProfile), so profile needs to
+     out-rank all of them to be the one showing; going back just lets
+     whichever was there reappear. */
+  z-index: 1850;
 }
 
 .chat-header-user {

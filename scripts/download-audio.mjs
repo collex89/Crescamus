@@ -43,6 +43,18 @@ const CHANTS = [
     origUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/7f/Tantum_Ergo_I_Gregorian.ogg',
     sourceUrl: 'https://commons.wikimedia.org/wiki/File:Tantum_Ergo_I_Gregorian.ogg',
     license: 'CC BY-SA 3.0', artist: 'Gareth Hughes'
+  },
+  {
+    id: 'chant_paternoster',
+    origUrl: 'https://upload.wikimedia.org/wikipedia/commons/a/af/Schola_Gregoriana-Pater_Noster.ogg',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Schola_Gregoriana-Pater_Noster.ogg',
+    license: 'CC BY-SA 3.0', artist: 'Schola Gregoriana'
+  },
+  {
+    id: 'chant_kyrie',
+    origUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/73/Schola_Gregoriana-Kyrie_eleison.ogg',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Schola_Gregoriana-Kyrie_eleison.ogg',
+    license: 'CC BY-SA 3.0', artist: 'Schola Gregoriana'
   }
 ];
 

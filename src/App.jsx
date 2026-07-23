@@ -292,6 +292,16 @@ const Icons = {
       <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
     </svg>
   ),
+  SkipBack: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
+  SkipForward: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
   Download: () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -510,7 +520,7 @@ export default function App() {
   const [deleteAccountConfirmText, setDeleteAccountConfirmText] = useState('');
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [deleteAccountError, setDeleteAccountError] = useState('');
-  const [profileTab, setProfileTab] = useState('posts'); // 'posts' | 'bookmarks'
+  const [profileTab, setProfileTab] = useState('posts'); // 'posts' | 'reshares' | 'bookmarks'
 
   // Direct Messages States (live mode populates this once the real session loads)
   const [conversations, setConversations] = useState([]);
@@ -882,14 +892,49 @@ export default function App() {
     }
   };
 
+  // Shared by the "next"/"previous" buttons, the end-of-track auto-advance,
+  // and the swipe gesture on the now-playing screen -- one place that
+  // decides what "skip" means (wraps around at either end of the list).
+  const playTrackAtOffset = (offset) => {
+    const currentIndex = AUDIO_TRACKS.findIndex(t => t.id === currentTrack.id);
+    const nextIndex = (currentIndex + offset + AUDIO_TRACKS.length) % AUDIO_TRACKS.length;
+    setTrackProgress(0);
+    setCurrentTrack(AUDIO_TRACKS[nextIndex]);
+    setIsPlaying(true);
+  };
+  const playNextTrack = () => playTrackAtOffset(1);
+  const playPreviousTrack = () => playTrackAtOffset(-1);
+
   const onTrackEnded = () => {
     setIsPlaying(false);
     setTrackProgress(0);
-    // Find next track in list and loop/advance
-    const currentIndex = AUDIO_TRACKS.findIndex(t => t.id === currentTrack.id);
-    const nextIndex = (currentIndex + 1) % AUDIO_TRACKS.length;
-    setCurrentTrack(AUDIO_TRACKS[nextIndex]);
-    setIsPlaying(true);
+    playNextTrack();
+  };
+
+  // Swipe left (finger moves right-to-left) advances to the next track;
+  // swipe right (left-to-right) goes to the previous one -- only on the
+  // now-playing cover/title, so it doesn't fight with dragging the seek
+  // slider or tapping the transport buttons underneath.
+  const swipeStartRef = useRef(null);
+  const SWIPE_THRESHOLD_PX = 50;
+
+  const handlePlayerSwipeStart = (e) => {
+    const t = e.touches[0];
+    swipeStartRef.current = { x: t.clientX, y: t.clientY };
+  };
+
+  const handlePlayerSwipeEnd = (e) => {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    // Require a clearly horizontal gesture, not an incidental wobble while
+    // scrolling or tapping.
+    if (Math.abs(dx) < SWIPE_THRESHOLD_PX || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx > 0) playPreviousTrack();
+    else playNextTrack();
   };
 
   const handleSeek = (value) => {
@@ -1733,22 +1778,28 @@ export default function App() {
     }
   };
 
+  // Deliberately doesn't touch notificationsOpen/inboxOpen/activeChatUser --
+  // the person view renders above all of them (see its z-index), so
+  // whichever one was open stays open underneath and reappears exactly as
+  // it was once the profile is closed, instead of being force-closed here
+  // and lost.
   const openPersonProfile = (usernameOrId) => {
     const person = users.find(u => u.id === usernameOrId || u.username === usernameOrId);
     if (!person) return;
     setActivePerson(person.id);
     setSubView('person');
-    setNotificationsOpen(false);
   };
 
   // Accepts either a community-list user ({id, name, username, avatar}) or
   // a conversation summary ({userId, name, username, avatar}) — both shapes
   // carry the same fields under slightly different id keys.
+  // Deliberately doesn't touch inboxOpen/subView -- the chat thread renders
+  // above both (see its z-index), so whichever was open underneath (the
+  // Inbox, or a profile's Message button) reappears exactly as it was once
+  // the chat is closed, instead of being force-closed here and lost.
   const openChat = (person) => {
     const userId = person.userId || person.id;
     setActiveChatUser({ userId, name: person.name, username: person.username, avatar: person.avatar });
-    setInboxOpen(false);
-    setSubView(null);
 
     if (isSupabaseConfigured && session) {
       api.fetchMessages(session.user.id, userId).then(setChatMessages);
@@ -2300,10 +2351,12 @@ export default function App() {
         {/* ------------------ VIEW 2b: AUTH FORM ------------------ */}
         {!splashActive && !isLoggedIn && !passwordRecoveryMode && welcomeStage === 'form' && (
           <div className="auth-container scrollable animate-fade-in">
-            <div className="auth-header">
-              <button className="icon-btn welcome-back-btn" onClick={() => setWelcomeStage('chooser')} aria-label="Back">
+            <div className="auth-topbar">
+              <button className="icon-btn" onClick={() => setWelcomeStage('chooser')} aria-label="Back">
                 <Icons.ChevronLeft />
               </button>
+            </div>
+            <div className="auth-header">
               <div className="auth-logo-symbol">
                 <img src="/logo.svg" alt="Crescamus logo" className="brand-logo-img" />
               </div>
@@ -2721,7 +2774,7 @@ export default function App() {
               if (!person) return null;
               const personPosts = posts.filter(p => belongsToProfile(p, person.username));
               return (
-                <div className="saint-details-view">
+                <div className="saint-details-view person-view">
                   <div className="person-view-header">
                     <button className="icon-btn" onClick={() => { setSubView(null); setActivePerson(null); }}>
                       <Icons.ChevronLeft />
@@ -2869,7 +2922,7 @@ export default function App() {
                   <button className="icon-btn" onClick={closeChat}>
                     <Icons.ChevronLeft />
                   </button>
-                  <div className="chat-header-user" onClick={() => openPersonProfile(activeChatUser.username)}>
+                  <div className="chat-header-user" onClick={() => { const username = activeChatUser.username; closeChat(); openPersonProfile(username); }}>
                     <img src={activeChatUser.avatar} className="chat-header-avatar" alt={activeChatUser.name} />
                     <span>{activeChatUser.name}</span>
                   </div>
@@ -4191,7 +4244,7 @@ export default function App() {
 
                     <div className="profile-stats-row">
                       <div className="stat-item">
-                        <div className="stat-val">{posts.filter(p => belongsToProfile(p, myUsername)).length}</div>
+                        <div className="stat-val">{posts.filter(p => p.user.username === myUsername && !p.resharedBy).length}</div>
                         <div className="stat-label">Posts</div>
                       </div>
                       <div className="stat-item" style={{ cursor: 'pointer' }} onClick={() => openFollowList(session?.user?.id || 'me', myUsername, 'followers')}>
@@ -4214,6 +4267,9 @@ export default function App() {
                     <div className={`profile-tab-title ${profileTab === 'posts' ? 'active' : ''}`} onClick={() => setProfileTab('posts')}>
                       My Posts
                     </div>
+                    <div className={`profile-tab-title ${profileTab === 'reshares' ? 'active' : ''}`} onClick={() => setProfileTab('reshares')}>
+                      Reshares
+                    </div>
                     <div className={`profile-tab-title ${profileTab === 'bookmarks' ? 'active' : ''}`} onClick={() => setProfileTab('bookmarks')}>
                       Bookmarks
                     </div>
@@ -4221,13 +4277,26 @@ export default function App() {
 
                   {profileTab === 'posts' && (
                     <div>
-                      {posts.filter(p => belongsToProfile(p, myUsername)).length === 0 ? (
+                      {posts.filter(p => p.user.username === myUsername && !p.resharedBy).length === 0 ? (
                         <div className="search-empty-state">
                           <span className="empty-state-icon"><Icons.Comment /></span>
                           <p>You haven't shared anything yet. Tap the + on Home to post.</p>
                         </div>
                       ) : (
-                        posts.filter(p => belongsToProfile(p, myUsername)).map(post => renderPostCard(post))
+                        posts.filter(p => p.user.username === myUsername && !p.resharedBy).map(post => renderPostCard(post))
+                      )}
+                    </div>
+                  )}
+
+                  {profileTab === 'reshares' && (
+                    <div>
+                      {posts.filter(p => p.resharedBy?.username === myUsername).length === 0 ? (
+                        <div className="search-empty-state">
+                          <span className="empty-state-icon"><Icons.Repost /></span>
+                          <p>Posts you reshare will show up here, separate from your own.</p>
+                        </div>
+                      ) : (
+                        posts.filter(p => p.resharedBy?.username === myUsername).map(post => renderPostCard(post))
                       )}
                     </div>
                   )}
@@ -4315,21 +4384,34 @@ export default function App() {
                     <Icons.ChevronDown />
                   </button>
                   <h3>Now Playing</h3>
-                  <button className="icon-btn" onClick={() => { alert("Track bookmarked!"); }}>
+                  {/* Purely a spacer matching the back button's footprint so
+                      the title stays centered -- no bookmarking feature exists
+                      yet, so there's nothing real to put here. */}
+                  <div className="icon-btn" style={{ visibility: 'hidden' }} aria-hidden="true">
                     <Icons.Bookmark fill={false} />
-                  </button>
+                  </div>
                 </div>
 
                 <div className="player-content">
-                  <img
-                    src={currentTrack.cover}
-                    className={`player-cover-large ${isPlaying ? 'playing' : ''}`}
-                    alt="cover large"
-                  />
+                  {/* Swipe handlers live on just this cover/title block, not
+                      the whole player-content, so dragging the seek slider
+                      below (also a horizontal gesture) can't be mistaken for
+                      a track-skip swipe. */}
+                  <div
+                    className="player-swipe-area"
+                    onTouchStart={handlePlayerSwipeStart}
+                    onTouchEnd={handlePlayerSwipeEnd}
+                  >
+                    <img
+                      src={currentTrack.cover}
+                      className={`player-cover-large ${isPlaying ? 'playing' : ''}`}
+                      alt="cover large"
+                    />
 
-                  <div className="player-track-info">
-                    <h2>{currentTrack.title}</h2>
-                    <p>{currentTrack.artist}</p>
+                    <div className="player-track-info">
+                      <h2>{currentTrack.title}</h2>
+                      <p>{currentTrack.artist}</p>
+                    </div>
                   </div>
 
                   <div className="progress-bar-container">
@@ -4348,6 +4430,9 @@ export default function App() {
                   </div>
 
                   <div className="player-controls-row">
+                    <button className="icon-btn skip-btn" onClick={playPreviousTrack} aria-label="Previous track">
+                      <Icons.SkipBack />
+                    </button>
                     <button className="icon-btn seek-btn" onClick={() => handleSeek(Math.max(0, trackProgress - 15))}>
                       <Icons.RotateCcw /> <span>15s</span>
                     </button>
@@ -4356,6 +4441,9 @@ export default function App() {
                     </button>
                     <button className="icon-btn seek-btn" onClick={() => handleSeek(Math.min(trackDuration, trackProgress + 15))}>
                       <span>15s</span> <Icons.RotateCw />
+                    </button>
+                    <button className="icon-btn skip-btn" onClick={playNextTrack} aria-label="Next track">
+                      <Icons.SkipForward />
                     </button>
                   </div>
 
@@ -4380,9 +4468,9 @@ export default function App() {
                       <div>{sleepTimeLeft !== null ? `${formatTime(sleepTimeLeft)}` : 'Off'}</div>
                     </div>
 
-                    <div className="control-item-widget" onClick={() => alert("Chant added to prayer queue!")}>
-                      <span>Queue</span>
-                      <div>View</div>
+                    <div className="control-item-widget" onClick={playNextTrack}>
+                      <span>Up Next</span>
+                      <div>{AUDIO_TRACKS[(AUDIO_TRACKS.findIndex(t => t.id === currentTrack.id) + 1) % AUDIO_TRACKS.length].title}</div>
                     </div>
                   </div>
                 </div>

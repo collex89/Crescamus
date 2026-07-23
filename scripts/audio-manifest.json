@@ -43,5 +43,23 @@
     "artist": "Gareth Hughes",
     "localPath": "/audio/hymn_tantumergo.mp3",
     "sizeBytes": 1161718
+  },
+  {
+    "id": "chant_paternoster",
+    "origUrl": "https://upload.wikimedia.org/wikipedia/commons/a/af/Schola_Gregoriana-Pater_Noster.ogg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Schola_Gregoriana-Pater_Noster.ogg",
+    "license": "CC BY-SA 3.0",
+    "artist": "Schola Gregoriana",
+    "localPath": "/audio/chant_paternoster.mp3",
+    "sizeBytes": 1837561
+  },
+  {
+    "id": "chant_kyrie",
+    "origUrl": "https://upload.wikimedia.org/wikipedia/commons/7/73/Schola_Gregoriana-Kyrie_eleison.ogg",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Schola_Gregoriana-Kyrie_eleison.ogg",
+    "license": "CC BY-SA 3.0",
+    "artist": "Schola Gregoriana",
+    "localPath": "/audio/chant_kyrie.mp3",
+    "sizeBytes": 993629
   }
 ]
