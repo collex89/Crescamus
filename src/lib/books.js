@@ -32,6 +32,15 @@ export const BOOKS_LIBRARY = [
     license: 'Public domain (Taylor translation)',
   },
   {
+    id: 'life-of-st-teresa',
+    title: 'The Life of St. Teresa of Jesus',
+    author: 'St. Teresa of Ávila',
+    description: "The autobiography of the great Carmelite reformer and Doctor of the Church, written in obedience to her confessors -- an intimate journey through conversion, mental prayer, and holy fortitude.",
+    totalChapters: 40,
+    sourceUrl: 'https://www.gutenberg.org/ebooks/8120',
+    license: 'Public domain (Lewis translation)',
+  },
+  {
     id: 'introduction-devout-life',
     title: 'Introduction to the Devout Life',
     author: 'St. Francis de Sales',

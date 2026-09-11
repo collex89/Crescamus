@@ -13,6 +13,7 @@
 //   The Imitation of Christ       -- gutenberg.org/ebooks/1653  (Benham translation)
 //   The Confessions of St. Augustine -- gutenberg.org/ebooks/3296  (Pusey translation)
 //   Story of a Soul (St. Thérèse) -- gutenberg.org/ebooks/16772 (Taylor translation)
+//   The Life of St. Teresa of Jesus -- gutenberg.org/ebooks/8120 (Lewis translation)
 //   Introduction to the Devout Life -- ccel.org/ccel/desales/devout_life (Library of Spiritual Works for English Catholics translation)
 //   Abandonment to Divine Providence -- gutenberg.org/ebooks/52057 (McMahon translation)
 //
@@ -144,6 +145,23 @@ const BOOKS = [
     expectedChapters: 11,
   },
   {
+    id: 'life-of-st-teresa',
+    file: 'life_of_st_teresa.txt',
+    title: 'The Life of St. Teresa of Jesus',
+    chapterRegex: /^Chapter [IVXLC]+\.\s*$/gm,
+    // The autobiography concludes at Chapter XL, followed by "The Relations."
+    // which contains later letters, relations, and an index. Using truncateLast cuts
+    // at the post-narrative section rather than the Table of Contents mention.
+    truncateAt: 'The Relations.',
+    truncateLast: true,
+    // Each chapter has editorial endnotes gathered at the end, starting with
+    // a restarted numbered list ("1. ..."). Slicing before the restart drops
+    // the endnotes cleanly without affecting body paragraphs.
+    truncateChapterAtNumberedRestart: true,
+    footnoteRegex: /\[\d+\]/g,
+    expectedChapters: 40,
+  },
+  {
     id: 'introduction-devout-life',
     file: 'introduction_devout_life.txt',
     title: 'Introduction to the Devout Life',
@@ -207,7 +225,7 @@ for (const book of BOOKS) {
   const raw = readFileSync(srcPath, 'utf8').replace(/\r\n/g, '\n');
   let body = book.source === 'ccel' ? raw : extractBody(raw, book.title);
   if (book.truncateAt) {
-    const cut = body.indexOf(book.truncateAt);
+    const cut = book.truncateLast ? body.lastIndexOf(book.truncateAt) : body.indexOf(book.truncateAt);
     if (cut === -1) throw new Error(`${book.id}: truncateAt marker "${book.truncateAt}" not found`);
     body = body.slice(0, cut);
   }
@@ -229,6 +247,25 @@ for (const book of BOOKS) {
     const spanStart = markers[i].index + markers[i][0].length;
     const spanEnd = i + 1 < markers.length ? markers[i + 1].index : body.length;
     let text = body.slice(spanStart, spanEnd);
+    if (book.truncateChapterAtNumberedRestart) {
+      const paras = text.split(/\n\n+/);
+      let restartIdx = -1;
+      let prevNum = 0;
+      for (let p = 0; p < paras.length; p++) {
+        const m = paras[p].trim().match(/^(\d+)\.\s+/);
+        if (m) {
+          const num = parseInt(m[1], 10);
+          if (num === 1 && prevNum > 1) {
+            restartIdx = p;
+            break;
+          }
+          prevNum = num;
+        }
+      }
+      if (restartIdx !== -1) {
+        text = paras.slice(0, restartIdx).join('\n\n');
+      }
+    }
     if (book.stripFootnoteParagraph) text = stripFootnoteParagraphs(text, book.stripFootnoteParagraph);
     if (book.truncateChapterAtRule) {
       // CCEL's rule lines are indented a few spaces rather than flush
