@@ -937,15 +937,19 @@ export default function App() {
     }
   }, [bibleVersion]);
 
-  // 2z. Close the post "..." menu when clicking anywhere else
+  // 2z. Close post menus when clicking anywhere else
   useEffect(() => {
-    if (postMenuOpen === null) return;
+    if (postMenuOpen === null && shareMenuOpen === null && reshareMenuOpen === null) return;
     const closeMenu = (e) => {
-      if (!e.target.closest('.post-menu-wrap')) setPostMenuOpen(null);
+      if (!e.target.closest('.post-menu-wrap')) {
+        setPostMenuOpen(null);
+        setShareMenuOpen(null);
+        setReshareMenuOpen(null);
+      }
     };
     document.addEventListener('click', closeMenu);
     return () => document.removeEventListener('click', closeMenu);
-  }, [postMenuOpen]);
+  }, [postMenuOpen, shareMenuOpen, reshareMenuOpen]);
 
   // Restrict text selection / "Select All" on mobile & desktop to the target post or comment content,
   // preventing user metadata, action counters, comments headers, or composer inputs from being selected.
@@ -1613,6 +1617,7 @@ export default function App() {
       await navigator.clipboard.writeText(getPostShareUrl(post));
       setCopiedShareId(post.id);
       setTimeout(() => setCopiedShareId(null), 1500);
+      setTimeout(() => setShareMenuOpen(null), 800);
     } catch {}
   };
   const copyPostText = async (post) => {
@@ -1635,6 +1640,7 @@ export default function App() {
       }
       setCopiedTextId(post.id);
       setTimeout(() => setCopiedTextId(null), 1500);
+      setTimeout(() => setShareMenuOpen(null), 800);
     } catch (err) {
       console.error('Failed to copy text', err);
     }
@@ -1646,6 +1652,20 @@ export default function App() {
     } finally {
       setSavingImagePostId(null);
       setShareMenuOpen(null);
+    }
+  };
+
+  // Adjusts dropdown positioning if it would overflow the top or bottom of the screen
+  const autoPositionDropdown = (node) => {
+    if (!node) return;
+    const rect = node.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    if (rect.bottom > vh - 10 && rect.top > 220) {
+      node.classList.add('drop-up');
+      node.classList.remove('drop-down');
+    } else if (rect.top < 10 && vh - rect.bottom > 220) {
+      node.classList.add('drop-down');
+      node.classList.remove('drop-up');
     }
   };
 
@@ -1986,7 +2006,7 @@ export default function App() {
               <Icons.MoreVertical />
             </button>
             {postMenuOpen === post.id && (
-              <div className="post-menu-dropdown">
+              <div className="post-menu-dropdown" ref={autoPositionDropdown}>
                 <button className="post-menu-item" onClick={() => { copyPostText(post); setPostMenuOpen(null); }}>
                   <Icons.Copy /> {copiedTextId === post.id ? 'Copied Text!' : 'Copy Text'}
                 </button>
@@ -2075,7 +2095,7 @@ export default function App() {
               <span>{post.resharesCount || 0}</span>
             </button>
             {reshareMenuOpen === post.id && (
-              <div className="post-menu-dropdown">
+              <div className="post-menu-dropdown" ref={autoPositionDropdown}>
                 <button className="post-menu-item" onClick={() => { handleReshare(post); setReshareMenuOpen(null); }}>
                   <Icons.Repost /> Repost
                 </button>
@@ -2102,7 +2122,7 @@ export default function App() {
             <Icons.Share />
           </button>
           {shareMenuOpen === post.id && (
-            <div className="post-menu-dropdown">
+            <div className="post-menu-dropdown" ref={autoPositionDropdown}>
               <button className="post-menu-item" onClick={() => copyPostText(post)}>
                 <Icons.Copy /> {copiedTextId === post.id ? 'Text Copied!' : 'Copy Text'}
               </button>
@@ -3684,7 +3704,7 @@ export default function App() {
                 <input
                   type="email"
                   className="form-input"
-                  placeholder="faith@crescamus.com"
+                  placeholder="faith@crescamus.app"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -4838,7 +4858,7 @@ export default function App() {
                               <Icons.MoreVertical />
                             </button>
                             {postMenuOpen === detailPost.id && (
-                              <div className="post-menu-dropdown">
+                              <div className="post-menu-dropdown" ref={autoPositionDropdown}>
                                 <button className="post-menu-item" onClick={() => { copyPostText(detailPost); setPostMenuOpen(null); }}>
                                   <Icons.Copy /> {copiedTextId === detailPost.id ? 'Copied Text!' : 'Copy Text'}
                                 </button>
@@ -4915,7 +4935,7 @@ export default function App() {
                               <span>{detailPost.resharesCount || 0}</span>
                             </button>
                             {reshareMenuOpen === detailPost.id && (
-                              <div className="post-menu-dropdown">
+                              <div className="post-menu-dropdown" ref={autoPositionDropdown}>
                                 <button className="post-menu-item" onClick={() => { handleReshare(detailPost); setReshareMenuOpen(null); }}>
                                   <Icons.Repost /> Repost
                                 </button>
@@ -4940,7 +4960,7 @@ export default function App() {
                             <Icons.Share />
                           </button>
                           {shareMenuOpen === detailPost.id && (
-                            <div className="post-menu-dropdown">
+                            <div className="post-menu-dropdown" ref={autoPositionDropdown}>
                               <button className="post-menu-item" onClick={() => copyPostText(detailPost)}>
                                 <Icons.Copy /> {copiedTextId === detailPost.id ? 'Text Copied!' : 'Copy Text'}
                               </button>

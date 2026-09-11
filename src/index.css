@@ -3921,16 +3921,35 @@ textarea.form-input {
 
 .post-menu-dropdown {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 6px);
   right: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 10px 28px -4px rgba(0, 0, 0, 0.18), 0 4px 12px -2px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-  z-index: 50;
-  min-width: 150px;
+  z-index: 100;
+  min-width: 170px;
   animation: scaleUp 0.15s ease;
+  transform-origin: top right;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+
+/* Action bar dropdowns (Share, Reshare at bottom of post cards) pop UPWARDS by default
+   so they stay completely visible within the card and viewport, never cut off off-screen. */
+.feed-actions .post-menu-dropdown,
+.post-menu-dropdown.drop-up {
+  top: auto;
+  bottom: calc(100% + 8px);
+  right: 0;
+  transform-origin: bottom right;
+}
+
+.post-menu-dropdown.drop-down {
+  top: calc(100% + 6px) !important;
+  bottom: auto !important;
+  transform-origin: top right !important;
 }
 
 .post-menu-item {
