@@ -776,6 +776,8 @@ export default function App() {
   const [pullDistance, setPullDistance] = useState(0); // live drag offset while pulling down to refresh, 0 when idle
   const pullStartYRef = useRef(null);
   const mainScrollRef = useRef(null);
+  const booksLibraryScrollRef = useRef(null);
+  const bookReaderScrollRef = useRef(null);
 
   // @mention autocomplete -- one shared dropdown, driven by whichever
   // post/comment input the user is currently typing an @mention into.
@@ -1080,16 +1082,21 @@ export default function App() {
     mainScrollRef.current?.scrollTo({ top: 0 });
   }, [activeTab, selectedBook, selectedChapter, verseModeActive]);
 
-  // Same issue, same fix, for the Catholic Classics library: picking a book
-  // and its "Select Chapter" grid are two different screens, but both live
-  // under subView === 'booksLibrary' (only selectedClassicBook flips
-  // between them), so the tab-switch scroll reset above never fires here --
-  // scrolling down the book list and tapping one opened the chapter grid
-  // already scrolled down to match.
+  // Catholic Classics library: picking a book and its "Select Chapter" grid
+  // are two different screens within subView === 'booksLibrary' (only selectedClassicBook
+  // flips between them). Since both render inside .saint-details-view's own .scrollable
+  // rather than mainScrollRef, scrolling down the book list and tapping one opened the
+  // chapter grid already scrolled down to match without this targeted reset.
   useEffect(() => {
     if (subView !== 'booksLibrary') return;
-    mainScrollRef.current?.scrollTo({ top: 0 });
+    booksLibraryScrollRef.current?.scrollTo({ top: 0 });
   }, [subView, selectedClassicBook]);
+
+  // Book Reader: ensures chapter text starts at top when opened or when changing chapters
+  useEffect(() => {
+    if (subView !== 'bookReader') return;
+    bookReaderScrollRef.current?.scrollTo({ top: 0 });
+  }, [subView, activeBook?.id, activeBookChapter]);
 
   // Remembers this chapter as "where they left off" for Home's Continue
   // Reading banner. Gated on verseModeActive specifically, not just
@@ -5149,7 +5156,11 @@ export default function App() {
                       </h3>
                       <div style={{ width: '24px' }}></div>
                     </div>
-                    <div className="scrollable">
+                    <div
+                      key={selectedClassicBook ? `chapters-${selectedClassicBook.id}` : 'chapters'}
+                      className="scrollable"
+                      ref={booksLibraryScrollRef}
+                    >
                       <div className="card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, rgba(212,175,55,0.08), rgba(30,58,138,0.04))', border: '1px solid rgba(var(--secondary-rgb), 0.25)' }}>
                         <h4 style={{ fontSize: '15px', marginBottom: '2px' }}>{selectedClassicBook.title}</h4>
                         <p style={{ fontSize: '12px', color: 'var(--secondary)', marginBottom: '6px' }}>{selectedClassicBook.author}</p>
@@ -5193,7 +5204,7 @@ export default function App() {
                       <h3>Catholic Classics</h3>
                       <div style={{ width: '24px' }}></div>
                     </div>
-                    <div className="scrollable">
+                    <div key="library-list" className="scrollable" ref={booksLibraryScrollRef}>
                       {BOOKS_LIBRARY.map(book => (
                         <div key={book.id} className="card" style={{ marginBottom: '12px', cursor: 'pointer' }} onClick={() => handleSelectClassicBook(book)}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -5229,7 +5240,11 @@ export default function App() {
                     <Icons.BookOpen />
                   </button>
                 </div>
-                <div className="scrollable">
+                <div
+                  key={`reader-${activeBook?.id}-${activeBookChapter}`}
+                  className="scrollable"
+                  ref={bookReaderScrollRef}
+                >
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
                     <button
                       className="filter-pill"
