@@ -3582,6 +3582,9 @@ textarea.form-input {
 .composer-sheet .scrollable {
   display: flex;
   flex-direction: column;
+  padding: 0 0 24px 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .composer-post-btn {
@@ -3605,14 +3608,11 @@ textarea.form-input {
 .composer-writer {
   display: flex;
   gap: 12px;
-  padding: 18px 16px 8px;
-  /* Claim the sheet's remaining height so the textarea has something to
-     stretch into. Without this the row is only as tall as its content, and
-     the textarea sat at whatever its rows attribute worked out to no matter
-     how much space was free. min-height:0 lets it shrink again when the
-     keyboard takes most of the screen. */
+  padding: 14px 16px 8px;
   flex: 1;
-  min-height: 0;
+  /* Minimum height ensures the text typing area is NEVER crushed to a sliver
+     when an image attachment is added or when the mobile keyboard is open. */
+  min-height: 120px;
 }
 
 .composer-writer-avatar {
@@ -3633,11 +3633,8 @@ textarea.form-input {
   font-family: var(--font-body);
   font-size: 16px;
   line-height: 1.5;
-  padding-top: 8px;
-  /* The row's default align-items:stretch already sizes this to the full
-     height of .composer-writer above; min-height:0 stops the rows attribute
-     acting as a floor that would keep it from shrinking on a short screen. */
-  min-height: 0;
+  padding-top: 4px;
+  min-height: 90px;
 }
 
 .composer-textarea::placeholder {
@@ -3646,19 +3643,41 @@ textarea.form-input {
 
 .composer-image-preview {
   position: relative;
-  margin: 12px 16px 0;
+  margin: 10px 16px 14px;
   border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--border);
+  flex-shrink: 0;
+  max-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .composer-image-preview img,
 .composer-image-preview video {
   width: 100%;
-  max-height: 360px;
+  height: 100%;
+  max-height: 180px;
   object-fit: contain;
-  background: #00000008;
   display: block;
+}
+
+@media (max-height: 600px) {
+  .composer-image-preview,
+  .composer-image-preview img,
+  .composer-image-preview video {
+    max-height: 140px;
+  }
+}
+
+@media (min-width: 768px) and (min-height: 750px) {
+  .composer-image-preview,
+  .composer-image-preview img,
+  .composer-image-preview video {
+    max-height: 240px;
+  }
 }
 
 .composer-image-remove {
@@ -3668,13 +3687,20 @@ textarea.form-input {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.65);
   color: #fff;
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  z-index: 2;
+  transition: var(--transition);
+}
+
+.composer-image-remove:hover {
+  background: rgba(0, 0, 0, 0.85);
+  transform: scale(1.05);
 }
 
 .composer-image-remove svg {
@@ -3683,10 +3709,12 @@ textarea.form-input {
 }
 
 .composer-toolbar {
-  padding: 12px 16px;
+  padding: 10px 16px;
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
+  flex-shrink: 0;
+  background: var(--surface);
 }
 
 .composer-attach-btn {
@@ -3710,7 +3738,9 @@ textarea.form-input {
   align-items: center;
   gap: 2px;
   padding: 8px 16px;
-  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--surface);
 }
 
 .composer-format-btn {

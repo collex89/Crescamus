@@ -2273,6 +2273,14 @@ export default function App() {
     setComposerOpen(true);
   };
 
+  // Auto-sizes post composer textarea so typing area expands naturally with text
+  useEffect(() => {
+    if (!composerOpen || !composerTextareaRef.current) return;
+    const el = composerTextareaRef.current;
+    el.style.height = 'auto';
+    el.style.height = `${Math.max(90, el.scrollHeight)}px`;
+  }, [newPostText, composerOpen]);
+
   const handleComposerMediaChange = (e) => {
     const file = e.target.files?.[0];
     e.target.value = ''; // allow re-selecting the same file after removing it
@@ -4512,9 +4520,14 @@ export default function App() {
                         placeholder="Share your faith with the community..."
                         value={newPostText}
                         onChange={(e) => { setNewPostText(e.target.value); updateMentionState(e.target, e.target.value, setNewPostText); }}
+                        onFocus={() => {
+                          setTimeout(() => {
+                            composerTextareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                          }, 150);
+                        }}
                         onBlur={() => setMentionState(null)}
                         autoFocus
-                        rows={6}
+                        rows={5}
                       />
                     )}
                   </div>
