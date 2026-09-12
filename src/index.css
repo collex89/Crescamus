@@ -3609,9 +3609,10 @@ textarea.form-input {
   display: flex;
   gap: 12px;
   padding: 14px 16px 8px;
-  flex: 1;
-  /* Minimum height ensures the text typing area is NEVER crushed to a sliver
-     when an image attachment is added or when the mobile keyboard is open. */
+  /* flex: 0 0 auto ensures the writer container expands naturally with the textarea,
+     so elements below it (like image previews) are pushed down in normal
+     document flow, NEVER rendering on top of or behind the text. */
+  flex: 0 0 auto;
   min-height: 120px;
 }
 
@@ -3635,6 +3636,7 @@ textarea.form-input {
   line-height: 1.5;
   padding-top: 4px;
   min-height: 90px;
+  box-sizing: border-box;
 }
 
 .composer-textarea::placeholder {
@@ -3643,11 +3645,11 @@ textarea.form-input {
 
 .composer-image-preview {
   position: relative;
-  margin: 10px 16px 14px;
+  margin: 12px 16px 16px;
   border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--border);
-  flex-shrink: 0;
+  flex: 0 0 auto;
   max-height: 180px;
   display: flex;
   align-items: center;
@@ -3832,13 +3834,14 @@ textarea.form-input {
 }
 
 .composer-preview {
-  margin: 0 16px 12px;
-  padding: 12px;
+  flex: 1;
+  padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   font-size: 15px;
   line-height: 1.5;
   color: var(--text);
+  word-break: break-word;
 }
 
 .post-blockquote {
