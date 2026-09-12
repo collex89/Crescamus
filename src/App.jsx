@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { BIBLE_BOOKS, SAINTS, SAINT_CATEGORIES, AUDIO_TRACKS, STORIES } from './data/mockData';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import * as api from './lib/api';
@@ -776,7 +776,9 @@ export default function App() {
   const [pullDistance, setPullDistance] = useState(0); // live drag offset while pulling down to refresh, 0 when idle
   const pullStartYRef = useRef(null);
   const mainScrollRef = useRef(null);
-  const booksLibraryScrollRef = useRef(null);
+  const booksListScrollRef = useRef(null);
+  const bookChaptersScrollRef = useRef(null);
+  const booksListScrollPosRef = useRef(0);
   const bookReaderScrollRef = useRef(null);
 
   // @mention autocomplete -- one shared dropdown, driven by whichever
@@ -1084,12 +1086,18 @@ export default function App() {
 
   // Catholic Classics library: picking a book and its "Select Chapter" grid
   // are two different screens within subView === 'booksLibrary' (only selectedClassicBook
-  // flips between them). Since both render inside .saint-details-view's own .scrollable
-  // rather than mainScrollRef, scrolling down the book list and tapping one opened the
-  // chapter grid already scrolled down to match without this targeted reset.
-  useEffect(() => {
+  // flips between them). Opening a book starts its chapter grid at the top, while
+  // returning back to the library restores the user's scroll position in the book list.
+  useLayoutEffect(() => {
     if (subView !== 'booksLibrary') return;
-    booksLibraryScrollRef.current?.scrollTo({ top: 0 });
+    if (selectedClassicBook) {
+      bookChaptersScrollRef.current?.scrollTo({ top: 0 });
+    } else if (booksListScrollPosRef.current > 0) {
+      booksListScrollRef.current?.scrollTo({ top: booksListScrollPosRef.current });
+      requestAnimationFrame(() => {
+        booksListScrollRef.current?.scrollTo({ top: booksListScrollPosRef.current });
+      });
+    }
   }, [subView, selectedClassicBook]);
 
   // Book Reader: ensures chapter text starts at top when opened or when changing chapters
@@ -2691,6 +2699,7 @@ export default function App() {
   // Opens a Catholic Classics book's chapter picker, prefetching any saved
   // reading_progress row so the chapter grid highlights it and offers a quick resume.
   const handleSelectClassicBook = async (book) => {
+    booksListScrollPosRef.current = booksListScrollRef.current?.scrollTop || booksListScrollPosRef.current || 0;
     setSelectedClassicBook(book);
     let startChapter = null;
     if (isSupabaseConfigured && session) {
@@ -5159,7 +5168,7 @@ export default function App() {
                     <div
                       key={selectedClassicBook ? `chapters-${selectedClassicBook.id}` : 'chapters'}
                       className="scrollable"
-                      ref={booksLibraryScrollRef}
+                      ref={bookChaptersScrollRef}
                     >
                       <div className="card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, rgba(212,175,55,0.08), rgba(30,58,138,0.04))', border: '1px solid rgba(var(--secondary-rgb), 0.25)' }}>
                         <h4 style={{ fontSize: '15px', marginBottom: '2px' }}>{selectedClassicBook.title}</h4>
@@ -5198,13 +5207,18 @@ export default function App() {
                 ) : (
                   <>
                     <div className="person-view-header">
-                      <button className="icon-btn" onClick={() => setSubView(null)}>
+                      <button className="icon-btn" onClick={() => { booksListScrollPosRef.current = 0; setSubView(null); }}>
                         <Icons.ChevronLeft />
                       </button>
                       <h3>Catholic Classics</h3>
                       <div style={{ width: '24px' }}></div>
                     </div>
-                    <div key="library-list" className="scrollable" ref={booksLibraryScrollRef}>
+                    <div
+                      key="library-list"
+                      className="scrollable"
+                      ref={booksListScrollRef}
+                      onScroll={(e) => { booksListScrollPosRef.current = e.currentTarget.scrollTop; }}
+                    >
                       {BOOKS_LIBRARY.map(book => (
                         <div key={book.id} className="card" style={{ marginBottom: '12px', cursor: 'pointer' }} onClick={() => handleSelectClassicBook(book)}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -5695,6 +5709,7 @@ export default function App() {
                   {/* Catholic Classics Quick Discover Banner — lets people discover
                       the spiritual classics library directly from Home. */}
                   <div className="card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, rgba(212,175,55,0.1), rgba(30,58,138,0.05))', border: '1px solid rgba(var(--secondary-rgb), 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => {
+                    booksListScrollPosRef.current = 0;
                     setSelectedClassicBook(null);
                     setSubView('booksLibrary');
                   }}>
@@ -5801,7 +5816,7 @@ export default function App() {
                       Home's Discover the Saints banner: a feature with no other
                       obvious entry point gets a card at the top of the screen
                       people already land on for reading. */}
-                  <div className="card" style={{ margin: '0 0 16px', background: 'linear-gradient(135deg, rgba(212,175,55,0.1), rgba(30,58,138,0.05))', border: '1px solid rgba(var(--secondary-rgb), 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => { setSelectedClassicBook(null); setSubView('booksLibrary'); }}>
+                  <div className="card" style={{ margin: '0 0 16px', background: 'linear-gradient(135deg, rgba(212,175,55,0.1), rgba(30,58,138,0.05))', border: '1px solid rgba(var(--secondary-rgb), 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => { booksListScrollPosRef.current = 0; setSelectedClassicBook(null); setSubView('booksLibrary'); }}>
                     <div>
                       <h4 style={{ color: 'var(--primary)', fontSize: '14px' }}>Catholic Classics</h4>
                       <p style={{ fontSize: '11px', marginTop: '2px' }}>The Imitation of Christ, Confessions, and more.</p>
