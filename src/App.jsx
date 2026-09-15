@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { BIBLE_BOOKS, SAINTS, SAINT_CATEGORIES, AUDIO_TRACKS, STORIES } from './data/mockData';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import * as api from './lib/api';
@@ -11,6 +11,7 @@ import { startReminderScheduler, requestNotificationPermission, getNotificationP
 import { renderFormattedText, wrapSelection, prefixLines, insertAtCursor } from './lib/textFormatting';
 import { downloadVerseImage } from './lib/verseImage';
 import { downloadPostImage } from './lib/postImage';
+import { findVerseReferences, parseVerseQuery, searchBooks, getPostScriptureEmbed, stripScriptureMetadata } from './lib/bibleReferences';
 
 // A curated set for the composer's emoji picker — everyday expression plus
 // faith-relevant symbols, not the full unicode emoji set.
@@ -553,6 +554,7 @@ export default function App() {
   const [composerPosting, setComposerPosting] = useState(false);
   const [composerError, setComposerError] = useState('');
   const [composerPreview, setComposerPreview] = useState(false);
+  const [composerScripture, setComposerScripture] = useState(null); // attached scripture reference { bookId, bookName, chapter, verse, showContent }
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const composerTextareaRef = useRef(null);
   const [postMenuOpen, setPostMenuOpen] = useState(null); // post id whose "..." menu is open
@@ -634,6 +636,14 @@ export default function App() {
   const [chapterGridBook, setChapterGridBook] = useState(null); // book awaiting a chapter pick
   const [chapterVerses, setChapterVerses] = useState([]);
   const [versesLoading, setVersesLoading] = useState(true);
+  const [targetVerseNumber, setTargetVerseNumber] = useState(null);
+  const [scripturePickerOpen, setScripturePickerOpen] = useState(false);
+  const [pickerBook, setPickerBook] = useState(null);
+  const [pickerChapter, setPickerChapter] = useState(1);
+  const [pickerVerse, setPickerVerse] = useState(null);
+  const [pickerSearchQuery, setPickerSearchQuery] = useState('');
+  const [pickerChapterVerses, setPickerChapterVerses] = useState([]);
+  const [commandState, setCommandState] = useState(null);
   // Catholic spiritual classics (see src/lib/books.js) -- a separate small
   // reading feature alongside the Bible, sharing the same
   // reading_progress table so "Continue Reading" on Home can point at
@@ -970,7 +980,8 @@ export default function App() {
     };
 
     const handlePointerDown = (e) => {
-      if (e.target.closest('input, textarea, [contenteditable="true"]')) {
+      const targetEl = e.target?.nodeType === Node.ELEMENT_NODE ? e.target : e.target?.parentElement;
+      if (targetEl?.closest?.('input, textarea, [contenteditable="true"]')) {
         activeContainer = null;
         return;
       }
@@ -978,7 +989,8 @@ export default function App() {
     };
 
     const handleSelectStart = (e) => {
-      if (e.target.closest('input, textarea, [contenteditable="true"]')) {
+      const targetEl = e.target?.nodeType === Node.ELEMENT_NODE ? e.target : e.target?.parentElement;
+      if (targetEl?.closest?.('input, textarea, [contenteditable="true"]')) {
         activeContainer = null;
         return;
       }
@@ -1078,11 +1090,36 @@ export default function App() {
 
   // The Bible reader shares the app's main scroll container, so changing a
   // chapter otherwise leaves the new text at the previous chapter's scroll
-  // position. Start every opened chapter at verse 1 instead.
+  // position. Start every opened chapter at verse 1 instead (unless targeting a specific verse).
   useEffect(() => {
-    if (activeTab !== 'bible' || !verseModeActive) return;
+    if (activeTab !== 'bible' || !verseModeActive || targetVerseNumber) return;
     mainScrollRef.current?.scrollTo({ top: 0 });
-  }, [activeTab, selectedBook, selectedChapter, verseModeActive]);
+  }, [activeTab, selectedBook, selectedChapter, verseModeActive, targetVerseNumber]);
+
+  // When navigated with a target verse (e.g. from a post reference link),
+  // wait for chapter verses to render, then smoothly scroll the target into view.
+  useEffect(() => {
+    if (activeTab !== 'bible' || !verseModeActive || !targetVerseNumber || versesLoading || chapterVerses.length === 0) return;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`bible-verse-${targetVerseNumber}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [activeTab, verseModeActive, targetVerseNumber, versesLoading, chapterVerses]);
+
+  // Pre-load verses for composer Scripture Picker modal
+  useEffect(() => {
+    if (!scripturePickerOpen || !pickerBook) return;
+    let cancelled = false;
+    loadBibleChapter(pickerBook.id, pickerChapter, bibleVersion).then(verses => {
+      if (!cancelled) {
+        setPickerChapterVerses(verses || []);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [scripturePickerOpen, pickerBook?.id, pickerChapter, bibleVersion]);
 
   // Catholic Classics library: picking a book and its "Select Chapter" grid
   // are two different screens within subView === 'booksLibrary' (only selectedClassicBook
@@ -1827,6 +1864,258 @@ export default function App() {
     });
   };
 
+  // Navigates directly to a referenced Bible verse from anywhere in the app
+  // (e.g. tapping "Philippians 4:19" in a post, comment, or search).
+  const navigateToVerse = useCallback((ref) => {
+    if (!ref || !ref.bookId) return;
+    const book = BIBLE_BOOKS.find(b => b.id === ref.bookId);
+    if (!book) return;
+    setSelectedBook(book);
+    const chap = Number(ref.chapter) || 1;
+    const clampedChap = Math.max(1, Math.min(chap, book.chapters));
+    setSelectedChapter(clampedChap);
+    if (ref.verse) {
+      setTargetVerseNumber(Number(ref.verse));
+    } else {
+      setTargetVerseNumber(null);
+    }
+    setVerseModeActive(true);
+    setSubView(null);
+    setStoryOpen(null);
+    setVerseShareMenuOpen(false);
+    setComposerOpen(false);
+    setActivePostId(null);
+    setScripturePickerOpen(false);
+    setActiveTab('bible');
+  }, []);
+
+  // Automatically loads and renders the holy scripture text for an explicitly
+  // referenced Bible verse in a post (e.g. John 14:6, Philippians 4:19), with a clickable
+  // citation badge that deep-links to the verse in the Bible section. If a verse
+  // was not referenced (just written by the author in prose), no embed card is shown.
+  const ScriptureEmbed = ({ targetRef = null, text, scriptureRef = null, onVerseClick, version = bibleVersion }) => {
+    const [embeds, setEmbeds] = useState([]);
+
+    const resolvedRef = targetRef || getPostScriptureEmbed(text, scriptureRef);
+
+    useEffect(() => {
+      if (!resolvedRef) {
+        setEmbeds([]);
+        return;
+      }
+
+      let cancelled = false;
+
+      loadBibleChapter(resolvedRef.bookId, resolvedRef.chapter, version).then(verses => {
+        if (cancelled || !verses || verses.length === 0) {
+          setEmbeds([]);
+          return;
+        }
+
+        if (resolvedRef.endVerse && resolvedRef.endVerse > resolvedRef.verse) {
+          const matching = verses.filter(v => v.v >= resolvedRef.verse && v.v <= resolvedRef.endVerse);
+          if (matching.length > 0) {
+            const content = matching.map(v => (v.v > resolvedRef.verse ? `[${v.v}] ` : '') + v.t).join(' ');
+            setEmbeds([{ ref: resolvedRef, content }]);
+          }
+        } else if (resolvedRef.verse) {
+          const match = verses.find(v => v.v === resolvedRef.verse);
+          if (match) {
+            setEmbeds([{ ref: resolvedRef, content: match.t }]);
+          }
+        }
+      });
+
+      return () => { cancelled = true; };
+    }, [resolvedRef?.bookId, resolvedRef?.chapter, resolvedRef?.verse, resolvedRef?.endVerse, version]);
+
+    if (embeds.length === 0) return null;
+
+    return (
+      <div className="post-scripture-embeds-container" onClick={(e) => e.stopPropagation()}>
+        {embeds.map(({ ref, content }) => (
+          <div key={`${ref.bookId}-${ref.chapter}-${ref.verse}`} className="post-scripture-embed-card">
+            <div className="post-scripture-embed-header">
+              <span className="post-scripture-tag">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2v20M17 7H7" />
+                </svg>
+                Holy Scripture
+              </span>
+              <button
+                type="button"
+                className="verse-ref-badge"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onVerseClick) onVerseClick(ref);
+                }}
+                title={`Open ${ref.display} in Bible`}
+              >
+                <Icons.Bible active /> {ref.display} <span className="verse-ref-arrow">↗</span>
+              </button>
+            </div>
+            <div className="post-scripture-embed-body">
+              “{content}”
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Called from onChange of composer/comment inputs to support /verse slash commands
+  const updateCommandState = (el, value, setValue) => {
+    const pos = el.selectionStart;
+    const uptoCursor = value.slice(0, pos);
+    const cmdMatch = uptoCursor.match(/(?:^|\s)\/(?:verse|bible)?(?:\s+([a-z0-9 :]+))?$/i);
+    if (!cmdMatch) {
+      setCommandState(null);
+      return;
+    }
+    const fullMatch = cmdMatch[0].trim();
+    const query = cmdMatch[1] ? cmdMatch[1].trim() : '';
+    setCommandState({
+      rawCommand: fullMatch,
+      query,
+      rect: el.getBoundingClientRect(),
+      tokenStart: pos - fullMatch.length,
+      cursorPos: pos,
+      el,
+      value,
+      setValue
+    });
+  };
+
+  const updateInputTokens = (el, value, setValue) => {
+    updateMentionState(el, value, setValue);
+    updateCommandState(el, value, setValue);
+  };
+
+  const applyCommand = (textToInsert) => {
+    if (!commandState) return;
+    const { el, value, setValue, tokenStart, cursorPos } = commandState;
+    const nextChar = value[cursorPos];
+    const insertion = `${textToInsert}${nextChar === ' ' || nextChar === '\n' ? '' : ' '}`;
+    const newValue = `${value.slice(0, tokenStart)}${insertion}${value.slice(cursorPos)}`;
+    setValue(newValue);
+    setCommandState(null);
+    requestAnimationFrame(() => {
+      el.focus();
+      const newPos = tokenStart + insertion.length;
+      el.setSelectionRange(newPos, newPos);
+    });
+  };
+
+  const dismissCommand = () => {
+    if (!commandState) return;
+    const { el, value, setValue, tokenStart, cursorPos } = commandState;
+    const newValue = `${value.slice(0, tokenStart)}${value.slice(cursorPos)}`;
+    setValue(newValue);
+    setCommandState(null);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(tokenStart, tokenStart);
+    });
+  };
+
+  const commandSuggestions = useMemo(() => {
+    if (!commandState) return [];
+    const q = commandState.query;
+    const results = [];
+
+    if (q) {
+      const parsed = parseVerseQuery(q);
+      if (parsed) {
+        if (parsed.verse) {
+          results.push({
+            title: `Reference ${parsed.display} (Show verse content)`,
+            subtitle: `Display the holy scripture text card in post`,
+            action: () => {
+              setComposerScripture({
+                bookId: parsed.bookId,
+                bookName: parsed.bookName,
+                chapter: parsed.chapter,
+                verse: parsed.verse,
+                display: parsed.display,
+                showContent: true
+              });
+              applyCommand(`${parsed.display}\n<!--scripture:${parsed.bookId}:${parsed.chapter}:${parsed.verse}-->\n`);
+            }
+          });
+          results.push({
+            title: `Insert ${parsed.display} (Badge only)`,
+            subtitle: `Clickable chip without verse content embed`,
+            action: () => {
+              setComposerScripture({
+                bookId: parsed.bookId,
+                bookName: parsed.bookName,
+                chapter: parsed.chapter,
+                verse: parsed.verse,
+                display: parsed.display,
+                showContent: false
+              });
+              applyCommand(`${parsed.display} <!--scripture:${parsed.bookId}:${parsed.chapter}:${parsed.verse}:no-embed-->`);
+            }
+          });
+        } else {
+          results.push({
+            title: `Insert ${parsed.display}`,
+            subtitle: `Click to insert reference into post`,
+            action: () => applyCommand(parsed.display)
+          });
+        }
+      }
+      const matchingBooks = searchBooks(q);
+      matchingBooks.slice(0, 3).forEach(book => {
+        results.push({
+          title: `${book.name}`,
+          subtitle: `${book.category} (${book.chapters} chapters) — Pick verse`,
+          action: () => {
+            setPickerBook(book);
+            setPickerChapter(1);
+            setPickerVerse(null);
+            setPickerSearchQuery('');
+            setScripturePickerOpen(true);
+            dismissCommand();
+          }
+        });
+      });
+    } else {
+      results.push({
+        title: '/verse — Reference Scripture',
+        subtitle: 'Tap to browse and insert a Bible verse',
+        action: () => {
+          setPickerBook(selectedBook || BIBLE_BOOKS[0]);
+          setPickerChapter(1);
+          setPickerVerse(null);
+          setPickerSearchQuery('');
+          setScripturePickerOpen(true);
+          dismissCommand();
+        }
+      });
+      [
+        BIBLE_BOOKS.find(b => b.id === 'phi'),
+        BIBLE_BOOKS.find(b => b.id === 'joh'),
+        BIBLE_BOOKS.find(b => b.id === 'psa')
+      ].filter(Boolean).forEach(book => {
+        results.push({
+          title: `${book.name}`,
+          subtitle: `Quick browse ${book.name}`,
+          action: () => {
+            setPickerBook(book);
+            setPickerChapter(1);
+            setPickerVerse(null);
+            setPickerSearchQuery('');
+            setScripturePickerOpen(true);
+            dismissCommand();
+          }
+        });
+      });
+    }
+
+    return results;
+  }, [commandState, selectedBook]);
+
   // As with likes/bookmarks above, `postId` is always the underlying
   // original post's id so comments stay in sync across every feed entry
   // (original + any reshares) that displays that same post.
@@ -1914,7 +2203,7 @@ export default function App() {
         <span>
           <span className="comment-user">{comment.user}</span>
           {comment.userIsVerified && <Icons.Verified size={11} />}
-          <span className="comment-text">{comment.text}</span>
+          <span className="comment-text">{renderFormattedText(comment.text, openPersonProfile, navigateToVerse)}</span>
         </span>
         <button
           className={`comment-like-btn ${comment.isLiked ? 'liked' : ''}`}
@@ -1941,10 +2230,10 @@ export default function App() {
             onChange={(e) => {
               const v = e.target.value;
               setReplyInputs({ ...replyInputs, [comment.id]: v });
-              updateMentionState(e.target, v, (nv) => setReplyInputs(prev => ({ ...prev, [comment.id]: nv })));
+              updateInputTokens(e.target, v, (nv) => setReplyInputs(prev => ({ ...prev, [comment.id]: nv })));
             }}
-            onBlur={() => setMentionState(null)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !mentionState) handleAddReply(postId, comment.id); }}
+            onBlur={() => { setMentionState(null); setCommandState(null); }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !mentionState && !commandState) handleAddReply(postId, comment.id); }}
             autoFocus
           />
           <button className="comment-submit-btn" onClick={() => handleAddReply(postId, comment.id)}>
@@ -1960,7 +2249,7 @@ export default function App() {
               <span>
                 <span className="comment-user">{reply.user}</span>
                 {reply.userIsVerified && <Icons.Verified size={11} />}
-                <span className="comment-text">{reply.text}</span>
+                <span className="comment-text">{renderFormattedText(reply.text, openPersonProfile, navigateToVerse)}</span>
               </span>
               <button
                 className={`comment-like-btn ${reply.isLiked ? 'liked' : ''}`}
@@ -2090,7 +2379,13 @@ export default function App() {
         }}
         style={{ cursor: 'pointer' }}
       >
-        {renderFormattedText(post.text, openPersonProfile)}
+        {renderFormattedText(
+          post.text,
+          openPersonProfile,
+          navigateToVerse,
+          (ref) => <ScriptureEmbed targetRef={ref} onVerseClick={navigateToVerse} />,
+          post.scriptureRef
+        )}
       </div>
       {post.video && <video src={post.video} className="feed-image" controls playsInline />}
       {post.image && <img src={post.image} className="feed-image" alt="post content" onClick={() => setActivePostId(post.id)} style={{ cursor: 'pointer' }} />}
@@ -2179,10 +2474,10 @@ export default function App() {
               onChange={(e) => {
                 const v = e.target.value;
                 setCommentInputs({ ...commentInputs, [post.originalPostId]: v });
-                updateMentionState(e.target, v, (nv) => setCommentInputs(prev => ({ ...prev, [post.originalPostId]: nv })));
+                updateInputTokens(e.target, v, (nv) => setCommentInputs(prev => ({ ...prev, [post.originalPostId]: nv })));
               }}
-              onBlur={() => setMentionState(null)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !mentionState) handleAddComment(post.originalPostId); }}
+              onBlur={() => { setMentionState(null); setCommandState(null); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !mentionState && !commandState) handleAddComment(post.originalPostId); }}
             />
             <button className="comment-submit-btn" onClick={() => handleAddComment(post.originalPostId)}>
               <Icons.ArrowRight />
@@ -2269,6 +2564,7 @@ export default function App() {
   const openComposer = () => {
     setNewPostText('');
     setComposerMedia(null);
+    setComposerScripture(null);
     setComposerError('');
     setComposerOpen(true);
   };
@@ -2278,7 +2574,7 @@ export default function App() {
     if (!composerOpen || !composerTextareaRef.current) return;
     const el = composerTextareaRef.current;
     el.style.height = 'auto';
-    el.style.height = `${Math.max(90, el.scrollHeight)}px`;
+    el.style.height = `${Math.max(120, Math.min(el.scrollHeight, 360))}px`;
   }, [newPostText, composerOpen]);
 
   const handleComposerMediaChange = (e) => {
@@ -2298,7 +2594,7 @@ export default function App() {
 
   const handleCreatePost = async () => {
     const text = newPostText.trim();
-    if (!text && !composerMedia) return;
+    if (!text && !composerMedia && !composerScripture) return;
     if (newPostText.length > POST_MAX_LENGTH) return;
 
     setComposerError('');
@@ -2314,7 +2610,7 @@ export default function App() {
         }
         const { post, error } = await api.createPost(text, imageUrl, videoUrl);
         if (error) { setComposerError(error.message); return; }
-        if (post) setPosts(prev => [{ ...post, isLiked: false, isBookmarked: false }, ...prev]);
+        if (post) setPosts(prev => [{ ...post, scriptureRef: composerScripture, isLiked: false, isBookmarked: false }, ...prev]);
       } else {
         const localId = `local-${Date.now()}`;
         setPosts(prev => [{
@@ -2331,6 +2627,7 @@ export default function App() {
           },
           time: 'Just now',
           text,
+          scriptureRef: composerScripture,
           image: composerMedia?.type === 'image' ? composerMedia.preview : null,
           video: composerMedia?.type === 'video' ? composerMedia.preview : null,
           likes: 0,
@@ -2343,6 +2640,7 @@ export default function App() {
       }
       setNewPostText('');
       setComposerMedia(null);
+      setComposerScripture(null);
       setComposerOpen(false);
     } finally {
       setComposerPosting(false);
@@ -3456,6 +3754,28 @@ export default function App() {
         </div>
       )}
 
+      {/* SLASH COMMAND (/verse) AUTOCOMPLETE */}
+      {commandState && commandSuggestions.length > 0 && (
+        <div
+          className="command-suggestions"
+          style={{ top: commandState.rect.bottom + 4, left: commandState.rect.left }}
+        >
+          {commandSuggestions.map((item, idx) => (
+            <div
+              key={idx}
+              className="command-suggestion-row"
+              onMouseDown={(e) => { e.preventDefault(); item.action(); }}
+            >
+              <div className="command-suggestion-icon">📖</div>
+              <div>
+                <div className="command-suggestion-title">{item.title}</div>
+                <div className="command-suggestion-subtitle">{item.subtitle}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* FULLSCREEN IMAGE VIEWER -- tap a post's image in the detail view to
           zoom; tap anywhere to close. position: fixed for the same reason
           as the mention dropdown above. */}
@@ -4492,6 +4812,20 @@ export default function App() {
                         </div>
                       )}
                     </div>
+                    <button
+                      type="button"
+                      className={`composer-format-btn ${scripturePickerOpen ? 'active' : ''}`}
+                      title="Reference Scripture (/verse)"
+                      onClick={() => {
+                        setPickerBook(selectedBook || BIBLE_BOOKS[0]);
+                        setPickerChapter(1);
+                        setPickerVerse(null);
+                        setPickerSearchQuery('');
+                        setScripturePickerOpen(true);
+                      }}
+                    >
+                      <Icons.Bible active={scripturePickerOpen} />
+                    </button>
                     <div style={{ flex: 1 }} />
                     <span className={`composer-char-count ${
                       newPostText.length > POST_MAX_LENGTH ? 'over-limit' : newPostText.length > POST_MAX_LENGTH - 100 ? 'near-limit' : ''
@@ -4512,25 +4846,69 @@ export default function App() {
                   <div className="composer-writer">
                     <img src={myAvatar} className="composer-writer-avatar" alt="" />
                     {composerPreview ? (
-                      <div className="composer-preview">{renderFormattedText(newPostText)}</div>
+                      <div className="composer-preview">
+                        {renderFormattedText(
+                          newPostText,
+                          null,
+                          navigateToVerse,
+                          (ref) => <ScriptureEmbed targetRef={ref} onVerseClick={navigateToVerse} />,
+                          composerScripture
+                        )}
+                      </div>
                     ) : (
                       <textarea
                         ref={composerTextareaRef}
                         className="composer-textarea"
-                        placeholder="Share your faith with the community..."
+                        placeholder="Share your faith with the community (or type /verse)..."
                         value={newPostText}
-                        onChange={(e) => { setNewPostText(e.target.value); updateMentionState(e.target, e.target.value, setNewPostText); }}
+                        onChange={(e) => { setNewPostText(e.target.value); updateInputTokens(e.target, e.target.value, setNewPostText); }}
                         onFocus={() => {
                           setTimeout(() => {
                             composerTextareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                           }, 150);
                         }}
-                        onBlur={() => setMentionState(null)}
+                        onBlur={() => { setMentionState(null); setCommandState(null); }}
                         autoFocus
                         rows={5}
                       />
                     )}
                   </div>
+
+                  {composerScripture && (
+                    <div className="composer-attached-scripture">
+                      <div className="composer-scripture-info">
+                        <span className="composer-scripture-icon">📖</span>
+                        <span className="composer-scripture-ref">{composerScripture.display}</span>
+                        <label className="composer-scripture-toggle">
+                          <input
+                            type="checkbox"
+                            checked={composerScripture.showContent !== false}
+                            onChange={(e) => {
+                              const show = e.target.checked;
+                              setComposerScripture(prev => ({ ...prev, showContent: show }));
+                              if (show) {
+                                setNewPostText(prev => prev.replace(/:no-embed-->/g, '-->'));
+                              } else {
+                                setNewPostText(prev => prev.replace(/<!--scripture:([a-z0-9_]+):(\d+)(?::(\d+))?-->/g, '<!--scripture:$1:$2:$3:no-embed-->'));
+                              }
+                            }}
+                          />
+                          <span>Show verse text in post</span>
+                        </label>
+                      </div>
+                      <button
+                        type="button"
+                        className="composer-scripture-remove"
+                        onClick={() => {
+                          setComposerScripture(null);
+                          setNewPostText(prev => prev.replace(/<!--scripture:[^>]+-->/g, ''));
+                        }}
+                        title="Remove scripture reference"
+                      >
+                        <Icons.Close />
+                      </button>
+                    </div>
+                  )}
                   {composerMedia && (
                     <div className="composer-image-preview">
                       {composerMedia.type === 'video' ? (
@@ -4939,7 +5317,15 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="feed-text post-detail-text">{renderFormattedText(detailPost.text, openPersonProfile)}</div>
+                      <div className="feed-text post-detail-text">
+                        {renderFormattedText(
+                          detailPost.text,
+                          openPersonProfile,
+                          navigateToVerse,
+                          (ref) => <ScriptureEmbed targetRef={ref} onVerseClick={navigateToVerse} />,
+                          detailPost.scriptureRef
+                        )}
+                      </div>
                       {detailPost.video && <video src={detailPost.video} className="feed-image" controls playsInline />}
                       {detailPost.image && (
                         <img
@@ -4953,37 +5339,63 @@ export default function App() {
 
                       <div className="feed-actions">
                         {renderPostLikeControl(detailPost)}
-                        <button className="feed-action-btn">
+
+                        <div className="feed-action-btn" style={{ cursor: 'default' }}>
                           <Icons.Comment />
                           <span>{detailPost.commentsCount}</span>
-                        </button>
+                        </div>
+
                         {detailPost.user.username !== myUsername ? (
                           <div className="post-menu-wrap">
                             <button className="feed-action-btn" onClick={() => setReshareMenuOpen(reshareMenuOpen === detailPost.id ? null : detailPost.id)} title="Reshare">
                               <Icons.Repost />
-                              <span>{detailPost.resharesCount || 0}</span>
+                              <span>{detailPost.resharesCount > 0 ? detailPost.resharesCount : ''}</span>
                             </button>
                             {reshareMenuOpen === detailPost.id && (
-                              <div className="post-menu-dropdown" ref={autoPositionDropdown}>
-                                <button className="post-menu-item" onClick={() => { handleReshare(detailPost); setReshareMenuOpen(null); }}>
-                                  <Icons.Repost /> Repost
+                              <div className="post-menu-dropdown reshare-menu-dropdown">
+                                <button
+                                  className="post-menu-item"
+                                  onClick={() => handleDirectReshare(detailPost.id)}
+                                  disabled={resharePostingId === detailPost.id}
+                                >
+                                  <Icons.Repost size={14} />
+                                  <span>{detailPost.hasReshared ? 'Undo Repost' : 'Repost'}</span>
                                 </button>
-                                <button className="post-menu-item" onClick={() => { setQuoteReshareTarget(detailPost); setReshareMenuOpen(null); }}>
-                                  <Icons.Edit /> Quote
+                                <button
+                                  className="post-menu-item"
+                                  onClick={() => openQuoteComposer(detailPost)}
+                                  disabled={resharePostingId === detailPost.id}
+                                >
+                                  <Icons.Quote size={14} />
+                                  <span>Quote Post</span>
                                 </button>
                               </div>
                             )}
                           </div>
                         ) : (
-                          <span className="feed-action-btn" title="Reposts" style={{ cursor: 'default' }}>
+                          <div className="feed-action-btn" style={{ cursor: 'default', opacity: 0.4 }} title="You cannot reshare your own post">
                             <Icons.Repost />
-                            <span>{detailPost.resharesCount || 0}</span>
-                          </span>
+                            <span>{detailPost.resharesCount > 0 ? detailPost.resharesCount : ''}</span>
+                          </div>
                         )}
-                        <button className={`feed-action-btn ${detailPost.isBookmarked ? 'bookmarked' : ''}`} onClick={() => handleBookmarkPost(detailPost.originalPostId)}>
-                          <Icons.Bookmark fill={detailPost.isBookmarked} />
-                          <span>Save</span>
+
+                        <button className="feed-action-btn" onClick={() => handleSharePost(detailPost)} title="Share link">
+                          <Icons.Share />
                         </button>
+
+                        <button className="feed-action-btn" onClick={() => handleDownloadPostImage(detailPost)} title="Download as image">
+                          <Icons.Image />
+                        </button>
+
+                        <button
+                          className={`feed-action-btn ${detailPost.isBookmarked ? 'active' : ''}`}
+                          onClick={() => handleBookmarkPost(detailPost.originalPostId)}
+                          style={{ marginLeft: 'auto' }}
+                          title={detailPost.isBookmarked ? "Remove bookmark" : "Bookmark post"}
+                        >
+                          <Icons.Bookmark fill={detailPost.isBookmarked} />
+                        </button>
+
                         <div className="post-menu-wrap">
                           <button className="feed-action-btn" onClick={() => setShareMenuOpen(shareMenuOpen === detailPost.id ? null : detailPost.id)} title="Share">
                             <Icons.Share />
@@ -5039,10 +5451,10 @@ export default function App() {
                       onChange={(e) => {
                         const v = e.target.value;
                         setCommentInputs({ ...commentInputs, [detailPost.originalPostId]: v });
-                        updateMentionState(e.target, v, (nv) => setCommentInputs(prev => ({ ...prev, [detailPost.originalPostId]: nv })));
+                        updateInputTokens(e.target, v, (nv) => setCommentInputs(prev => ({ ...prev, [detailPost.originalPostId]: nv })));
                       }}
-                      onBlur={() => setMentionState(null)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' && !mentionState) handleAddComment(detailPost.originalPostId); }}
+                      onBlur={() => { setMentionState(null); setCommandState(null); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !mentionState && !commandState) handleAddComment(detailPost.originalPostId); }}
                     />
                     <button className="comment-submit-btn" onClick={() => handleAddComment(detailPost.originalPostId)}>
                       <Icons.ArrowRight />
@@ -5413,7 +5825,7 @@ export default function App() {
                         </div>
                       </div>
                     </div>
-                    <div className="feed-text">{renderFormattedText(quoteReshareTarget.text)}</div>
+                    <div className="feed-text">{renderFormattedText(quoteReshareTarget.text, openPersonProfile, navigateToVerse)}</div>
                     {quoteReshareTarget.video && <video src={quoteReshareTarget.video} className="feed-image" controls playsInline />}
                     {quoteReshareTarget.image && <img src={quoteReshareTarget.image} className="feed-image" alt="post content" />}
                   </div>
@@ -5894,11 +6306,16 @@ export default function App() {
                           const verseKey = `${selectedBook.id}:${selectedChapter}:${verse.v}`;
                           const isHighlighted = bibleHighlights.includes(verseKey);
                           const isBookmarked = bibleBookmarks.includes(verseKey);
+                          const isTarget = targetVerseNumber === verse.v;
                           return (
                             <div
                               key={verse.v}
-                              className={`verse-item ${isHighlighted ? 'highlighted' : ''}`}
-                              onClick={() => handleVerseClick(verseKey)}
+                              id={`bible-verse-${verse.v}`}
+                              className={`verse-item ${isHighlighted ? 'highlighted' : ''} ${isTarget ? 'target-verse-highlight' : ''}`}
+                              onClick={() => {
+                                setTargetVerseNumber(null);
+                                handleVerseClick(verseKey);
+                              }}
                               style={{ cursor: 'pointer' }}
                             >
                               <span className="verse-text-group">
@@ -6311,7 +6728,15 @@ export default function App() {
                               <span style={{ fontWeight: 600, fontSize: '12px' }}>{post.user.name}</span>
                               <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{post.time}</span>
                             </div>
-                            <div style={{ fontSize: '12.5px', color: 'var(--text)' }}>{renderFormattedText(post.text, openPersonProfile)}</div>
+                            <div style={{ fontSize: '12.5px', color: 'var(--text)' }}>
+                              {renderFormattedText(
+                                post.text,
+                                openPersonProfile,
+                                navigateToVerse,
+                                (ref) => <ScriptureEmbed targetRef={ref} onVerseClick={navigateToVerse} />,
+                                post.scriptureRef
+                              )}
+                            </div>
                           </div>
                         ))
                       )}
@@ -6645,6 +7070,208 @@ export default function App() {
                   onClick={() => handleSaveReadingGoal({ daily_target_chapters: goalInputChapters, focus_scope: goalInputScope, enabled: goalInputEnabled })}
                 >
                   Save Goal
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* SCRIPTURE PICKER MODAL (Composer Toolbar 📖 Button) */}
+        {scripturePickerOpen && (
+          <div className="scripture-picker-overlay" onClick={() => setScripturePickerOpen(false)}>
+            <div className="scripture-picker-card" onClick={(e) => e.stopPropagation()}>
+              <div className="scripture-picker-header">
+                <h3><Icons.Bible active /> Reference Scripture</h3>
+                <button className="icon-btn" onClick={() => setScripturePickerOpen(false)} aria-label="Close">
+                  <Icons.Close />
+                </button>
+              </div>
+
+              <div className="scripture-picker-body">
+                {/* Quick search */}
+                <div className="scripture-search-wrap">
+                  <div className="scripture-search-icon"><Icons.Search /></div>
+                  <input
+                    type="text"
+                    className="scripture-search-input"
+                    placeholder="Search book or reference (e.g. Phil 4:19, John 3:16)..."
+                    value={pickerSearchQuery}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPickerSearchQuery(val);
+                      const parsed = parseVerseQuery(val);
+                      if (parsed) {
+                        const b = BIBLE_BOOKS.find(book => book.id === parsed.bookId);
+                        if (b) {
+                          setPickerBook(b);
+                          setPickerChapter(parsed.chapter);
+                          if (parsed.verse) setPickerVerse(parsed.verse);
+                        }
+                      }
+                    }}
+                    autoFocus
+                  />
+                </div>
+
+                {/* Step 1: Select Book */}
+                <div>
+                  <div className="scripture-step-title">1. Select Book ({pickerBook?.name || 'None'})</div>
+                  <div className="scripture-books-grid">
+                    {searchBooks(pickerSearchQuery).map(b => (
+                      <button
+                        key={b.id}
+                        type="button"
+                        className={`scripture-book-chip ${pickerBook?.id === b.id ? 'active' : ''}`}
+                        onClick={() => {
+                          setPickerBook(b);
+                          setPickerChapter(1);
+                          setPickerVerse(null);
+                        }}
+                      >
+                        {b.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Step 2: Select Chapter */}
+                {pickerBook && (
+                  <div>
+                    <div className="scripture-step-title">2. Select Chapter ({pickerChapter} of {pickerBook.chapters})</div>
+                    <div className="scripture-numbers-grid">
+                      {Array.from({ length: pickerBook.chapters }, (_, idx) => idx + 1).map(chapNum => (
+                        <button
+                          key={chapNum}
+                          type="button"
+                          className={`scripture-num-btn ${pickerChapter === chapNum ? 'active' : ''}`}
+                          onClick={() => {
+                            setPickerChapter(chapNum);
+                            setPickerVerse(null);
+                          }}
+                        >
+                          {chapNum}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3: Select Verse (Optional) */}
+                {pickerBook && pickerChapterVerses.length > 0 && (
+                  <div>
+                    <div className="scripture-step-title">3. Select Verse ({pickerVerse ? `Verse ${pickerVerse}` : 'Whole chapter or tap verse'})</div>
+                    <div className="scripture-numbers-grid">
+                      {pickerChapterVerses.map(v => (
+                        <button
+                          key={v.v}
+                          type="button"
+                          className={`scripture-num-btn ${pickerVerse === v.v ? 'active' : ''}`}
+                          onClick={() => setPickerVerse(pickerVerse === v.v ? null : v.v)}
+                          title={v.t}
+                        >
+                          {v.v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Live Preview Box */}
+                {pickerBook && (
+                  <div className="scripture-preview-box">
+                    <div className="scripture-preview-ref">
+                      📖 {pickerBook.name} {pickerChapter}{pickerVerse ? `:${pickerVerse}` : ''}
+                    </div>
+                    {pickerVerse && (
+                      <div className="scripture-preview-text">
+                        "{pickerChapterVerses.find(v => v.v === pickerVerse)?.t || ''}"
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="scripture-picker-footer">
+                <button
+                  type="button"
+                  className="auth-btn"
+                  style={{ background: 'transparent', color: 'var(--text-secondary)' }}
+                  onClick={() => setScripturePickerOpen(false)}
+                >
+                  Cancel
+                </button>
+                {pickerVerse && pickerChapterVerses.find(v => v.v === pickerVerse)?.t && (
+                  <button
+                    type="button"
+                    className="auth-btn"
+                    style={{ background: 'rgba(212, 175, 55, 0.15)', color: 'var(--secondary)', borderColor: 'var(--secondary)' }}
+                    onClick={() => {
+                      const vObj = pickerChapterVerses.find(v => v.v === pickerVerse);
+                      const refStr = `${pickerBook.name} ${pickerChapter}:${pickerVerse}`;
+                      const formatted = `> "${vObj.t}"\n\n— ${refStr}\n\n`;
+                      if (composerTextareaRef.current) {
+                        insertAtCursor(composerTextareaRef.current, newPostText, setNewPostText, formatted);
+                      } else {
+                        setNewPostText(prev => prev ? `${prev}\n\n${formatted}` : formatted);
+                      }
+                      setScripturePickerOpen(false);
+                    }}
+                  >
+                    Insert Quote & Ref
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="auth-btn"
+                  style={{ background: 'transparent', color: 'var(--text-primary)', borderColor: 'var(--border)' }}
+                  disabled={!pickerBook}
+                  onClick={() => {
+                    const refStr = `${pickerBook.name} ${pickerChapter}${pickerVerse ? `:${pickerVerse}` : ''}`;
+                    const metaTag = pickerVerse ? `<!--scripture:${pickerBook.id}:${pickerChapter}:${pickerVerse}:no-embed-->` : '';
+                    setComposerScripture({
+                      bookId: pickerBook.id,
+                      bookName: pickerBook.name,
+                      chapter: pickerChapter,
+                      verse: pickerVerse,
+                      display: refStr,
+                      showContent: false
+                    });
+                    const toInsert = `${refStr} ${metaTag} `;
+                    if (composerTextareaRef.current) {
+                      insertAtCursor(composerTextareaRef.current, newPostText, setNewPostText, toInsert);
+                    } else {
+                      setNewPostText(prev => prev ? `${prev} ${toInsert}` : toInsert);
+                    }
+                    setScripturePickerOpen(false);
+                  }}
+                >
+                  Reference Badge Only
+                </button>
+                <button
+                  type="button"
+                  className="auth-btn"
+                  disabled={!pickerBook}
+                  onClick={() => {
+                    const refStr = `${pickerBook.name} ${pickerChapter}${pickerVerse ? `:${pickerVerse}` : ''}`;
+                    const metaTag = pickerVerse ? `<!--scripture:${pickerBook.id}:${pickerChapter}:${pickerVerse}-->` : '';
+                    setComposerScripture({
+                      bookId: pickerBook.id,
+                      bookName: pickerBook.name,
+                      chapter: pickerChapter,
+                      verse: pickerVerse,
+                      display: refStr,
+                      showContent: true
+                    });
+                    const toInsert = `${refStr}\n${metaTag}\n`;
+                    if (composerTextareaRef.current) {
+                      insertAtCursor(composerTextareaRef.current, newPostText, setNewPostText, toInsert);
+                    } else {
+                      setNewPostText(prev => prev ? `${toInsert}\n${prev}` : toInsert);
+                    }
+                    setScripturePickerOpen(false);
+                  }}
+                >
+                  Reference Scripture (Show Content)
                 </button>
               </div>
             </div>

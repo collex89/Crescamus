@@ -5,34 +5,104 @@
 // approach never touches dangerouslySetInnerHTML, so there's nothing to
 // sanitize in the first place.
 
-// Splits a plain string on @username tokens, turning each into a clickable
-// span (or leaving it as plain "@text" if no click handler was given, e.g.
-// in a preview that isn't wired to navigation).
-// The boundary group requires @ to not be glued to a preceding letter/digit
-// -- without it, "a@b.com" or "hello@jo" would wrongly read as a mention of
-// "b.com"/"jo" instead of being left alone as an email/word.
-function splitMentions(text, keyPrefix, onMentionClick) {
-  const regex = /(^|[^a-zA-Z0-9])@([a-z0-9._]{3,20})/gi;
+import { findVerseReferences, stripScriptureMetadata, getPostScriptureEmbed } from './bibleReferences.js';
+
+// Splits a plain string on @username mentions and Bible verse references
+// (e.g. "Philippians 4:19", "Phil 4:19", "philiphians 4:19", "John 3:16"),
+// turning each into an interactive clickable token.
+function splitTokens(text, keyPrefix, onMentionClick, onVerseClick) {
+  if (!text) return [];
+
+  const tokens = [];
+
+  // 1. Find @mentions
+  const mentionRegex = /(^|[^a-zA-Z0-9])@([a-z0-9._]{3,20})/gi;
+  let match;
+  while ((match = mentionRegex.exec(text)) !== null) {
+    const prefixLen = match[1] ? match[1].length : 0;
+    const start = match.index + prefixLen;
+    const raw = '@' + match[2];
+    tokens.push({
+      type: 'mention',
+      start,
+      end: start + raw.length,
+      raw,
+      username: match[2].toLowerCase()
+    });
+  }
+
+  // 2. Find Bible references
+  const verseRefs = findVerseReferences(text);
+  verseRefs.forEach(ref => {
+    tokens.push({
+      type: 'verse',
+      start: ref.index,
+      end: ref.index + ref.length,
+      raw: ref.rawText,
+      ref
+    });
+  });
+
+  if (tokens.length === 0) return [text];
+
+  // Sort tokens by start position, resolving any unexpected overlap
+  tokens.sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
+
+  const filteredTokens = [];
+  let currentEnd = 0;
+  for (const t of tokens) {
+    if (t.start >= currentEnd) {
+      filteredTokens.push(t);
+      currentEnd = t.end;
+    }
+  }
+
   const out = [];
   let lastIndex = 0;
-  let match;
   let i = 0;
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) out.push(text.slice(lastIndex, match.index));
-    if (match[1]) out.push(match[1]);
-    const username = match[2].toLowerCase();
-    out.push(
-      <span
-        key={`${keyPrefix}-m-${i++}`}
-        className="mention-link"
-        onClick={onMentionClick ? (e) => { e.stopPropagation(); onMentionClick(username); } : undefined}
-      >
-        @{match[2]}
-      </span>
-    );
-    lastIndex = regex.lastIndex;
+
+  filteredTokens.forEach(t => {
+    if (t.start > lastIndex) {
+      out.push(text.slice(lastIndex, t.start));
+    }
+
+    if (t.type === 'mention') {
+      out.push(
+        <span
+          key={`${keyPrefix}-m-${i++}`}
+          className="mention-link"
+          onClick={onMentionClick ? (e) => { e.stopPropagation(); onMentionClick(t.username); } : undefined}
+        >
+          {t.raw}
+        </span>
+      );
+    } else if (t.type === 'verse') {
+      out.push(
+        <span
+          key={`${keyPrefix}-v-${i++}`}
+          className="verse-ref-badge"
+          role="button"
+          tabIndex={0}
+          title={`Open ${t.ref.display} in Bible`}
+          onClick={onVerseClick ? (e) => { e.stopPropagation(); onVerseClick(t.ref); } : undefined}
+        >
+          <svg className="verse-ref-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
+            <path d="M6 6h10"/>
+            <path d="M6 10h10"/>
+          </svg>
+          <span className="verse-ref-text">{t.raw}</span>
+        </span>
+      );
+    }
+
+    lastIndex = t.end;
+  });
+
+  if (lastIndex < text.length) {
+    out.push(text.slice(lastIndex));
   }
-  if (lastIndex < text.length) out.push(text.slice(lastIndex));
+
   return out;
 }
 
@@ -50,11 +120,11 @@ function splitMentions(text, keyPrefix, onMentionClick) {
 const INLINE_RE = /\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*((?:[^*]|\*\*)+?)\*(?!\*)/g;
 
 // Recurses into whatever each marker wrapped, so nesting works in both
-// directions and so @mentions inside bold/italic still become links -- the
-// leaf strings are the only place splitMentions runs. Each recursive call
+// directions and so @mentions and verse references inside bold/italic still become links -- the
+// leaf strings are the only place splitTokens runs. Each recursive call
 // gets a strictly shorter string (at least two markers are stripped), so
 // this always terminates.
-function parseInline(text, keyPrefix, onMentionClick, depth = 0) {
+function parseInline(text, keyPrefix, onMentionClick, onVerseClick, depth = 0) {
   const parts = [];
   const regex = new RegExp(INLINE_RE.source, 'g');
   let lastIndex = 0;
@@ -63,7 +133,7 @@ function parseInline(text, keyPrefix, onMentionClick, depth = 0) {
   while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
     const key = `${keyPrefix}-d${depth}-${i++}`;
-    const inner = (body) => parseInline(body, key, onMentionClick, depth + 1);
+    const inner = (body) => parseInline(body, key, onMentionClick, onVerseClick, depth + 1);
     if (match[1] !== undefined) {
       parts.push(<strong key={key}><em>{inner(match[1])}</em></strong>);
     } else if (match[2] !== undefined) {
@@ -76,18 +146,23 @@ function parseInline(text, keyPrefix, onMentionClick, depth = 0) {
   if (lastIndex < text.length) parts.push(text.slice(lastIndex));
 
   return parts.flatMap((part, idx) =>
-    typeof part === 'string' ? splitMentions(part, `${keyPrefix}-d${depth}-${idx}`, onMentionClick) : part
+    typeof part === 'string' ? splitTokens(part, `${keyPrefix}-d${depth}-${idx}`, onMentionClick, onVerseClick) : part
   );
 }
 
-// onMentionClick(username), if given, is called when a rendered @mention is
-// tapped -- lets the caller navigate to that person's profile without this
+// onMentionClick(username) and onVerseClick(ref), if given, are called when a rendered
+// @mention or Bible verse is tapped -- lets the caller navigate without this
 // module needing to know anything about app navigation.
-export function renderFormattedText(text, onMentionClick) {
+// renderEmbed(targetRef) if given renders an inline Holy Scripture embed card immediately
+// after the referenced scripture line.
+export function renderFormattedText(text, onMentionClick, onVerseClick, renderEmbed = null, scriptureRef = null) {
   if (!text) return null;
-  const lines = text.split('\n');
+
+  const targetScripture = getPostScriptureEmbed(text, scriptureRef);
+  const rawLines = text.split('\n');
   const blocks = [];
   let listBuffer = [];
+  let embedRendered = false;
 
   const flushList = (key) => {
     if (listBuffer.length) {
@@ -96,20 +171,68 @@ export function renderFormattedText(text, onMentionClick) {
     }
   };
 
-  lines.forEach((line, idx) => {
+  rawLines.forEach((rawLine, idx) => {
+    // 1. If this line is the scripture metadata comment, render the embed immediately here
+    const isMetaLine = /<!--scripture:([a-z0-9_]+):(\d+)(?::(\d+))?(:no-embed)?-->/i.test(rawLine.trim());
+    if (isMetaLine) {
+      flushList(idx);
+      if (!embedRendered && targetScripture && renderEmbed) {
+        embedRendered = true;
+        blocks.push(
+          <div key={`embed-${idx}`} className="inline-scripture-embed-slot">
+            {renderEmbed(targetScripture)}
+          </div>
+        );
+      }
+      return;
+    }
+
+    const line = stripScriptureMetadata(rawLine);
+
     if (line.startsWith('> ')) {
       flushList(idx);
-      blocks.push(<blockquote key={`q-${idx}`} className="post-blockquote">{parseInline(line.slice(2), `q${idx}`, onMentionClick)}</blockquote>);
+      blocks.push(<blockquote key={`q-${idx}`} className="post-blockquote">{parseInline(line.slice(2), `q${idx}`, onMentionClick, onVerseClick)}</blockquote>);
     } else if (line.startsWith('- ')) {
-      listBuffer.push(<li key={`li-${idx}`}>{parseInline(line.slice(2), `li${idx}`, onMentionClick)}</li>);
+      listBuffer.push(<li key={`li-${idx}`}>{parseInline(line.slice(2), `li${idx}`, onMentionClick, onVerseClick)}</li>);
     } else {
       flushList(idx);
-      blocks.push(<span key={`ln-${idx}`}>{line ? parseInline(line, `ln${idx}`, onMentionClick) : ' '}{idx < lines.length - 1 && <br />}</span>);
+      blocks.push(
+        <span key={`ln-${idx}`}>
+          {line ? parseInline(line, `ln${idx}`, onMentionClick, onVerseClick) : ' '}
+          {idx < rawLines.length - 1 && <br />}
+        </span>
+      );
+    }
+
+    // 2. If this line contains the target scripture reference and embed hasn't rendered yet
+    if (!embedRendered && targetScripture && renderEmbed) {
+      const refs = findVerseReferences(line);
+      const hasMatch = refs.some(r => r.bookId === targetScripture.bookId && r.chapter === targetScripture.chapter && (!targetScripture.verse || r.verse === targetScripture.verse));
+      if (hasMatch) {
+        embedRendered = true;
+        blocks.push(
+          <div key={`embed-after-${idx}`} className="inline-scripture-embed-slot">
+            {renderEmbed(targetScripture)}
+          </div>
+        );
+      }
     }
   });
+
   flushList('end');
+
+  // Fallback: If scripture was referenced but not yet rendered inline, place at the end
+  if (!embedRendered && targetScripture && renderEmbed) {
+    blocks.push(
+      <div key="embed-fallback" className="inline-scripture-embed-slot">
+        {renderEmbed(targetScripture)}
+      </div>
+    );
+  }
+
   return blocks;
 }
+
 
 // Wraps the current textarea selection with marker strings (or inserts an
 // empty pair and places the cursor between them if nothing is selected) —

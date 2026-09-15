@@ -4909,3 +4909,445 @@ textarea.form-input {
   gap: 10px;
 }
 
+/* ----------------------------------------------------
+   14. INTERACTIVE BIBLE VERSE REFERENCES & TOOLING
+   ---------------------------------------------------- */
+.verse-ref-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  margin: 0 2px;
+  border-radius: 6px;
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  color: var(--secondary);
+  font-size: 0.93em;
+  font-weight: 600;
+  cursor: pointer;
+  vertical-align: baseline;
+  text-decoration: none;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.verse-ref-badge:hover {
+  background: rgba(212, 175, 55, 0.22);
+  border-color: rgba(212, 175, 55, 0.5);
+  color: var(--secondary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.2);
+}
+
+.verse-ref-badge:active {
+  transform: translateY(0);
+  background: rgba(212, 175, 55, 0.28);
+}
+
+.verse-ref-icon {
+  flex-shrink: 0;
+  display: inline-block;
+  opacity: 0.85;
+}
+
+.verse-ref-text {
+  letter-spacing: 0.01em;
+}
+
+.verse-ref-arrow {
+  font-size: 10px;
+  opacity: 0.75;
+  margin-left: 2px;
+}
+
+/* Post Scripture Embed Card (renders verse content directly in posts) */
+.post-scripture-embeds-container {
+  margin: 10px 0 6px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.post-scripture-embed-card {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.09) 0%, rgba(212, 175, 55, 0.03) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.24);
+  border-left: 3.5px solid var(--secondary);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.post-scripture-embed-card:hover {
+  border-color: rgba(212, 175, 55, 0.42);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(212, 175, 55, 0.05) 100%);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
+}
+
+.post-scripture-embed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.post-scripture-tag {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--secondary);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  opacity: 0.95;
+}
+
+.post-scripture-embed-body {
+  font-family: var(--font-serif, "Lora", "Merriweather", Georgia, serif);
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text);
+  font-style: italic;
+  letter-spacing: 0.01em;
+  padding-left: 2px;
+}
+
+.inline-scripture-embed-slot {
+  display: block;
+  margin: 10px 0;
+}
+
+/* Attached Scripture Reference Banner in Post Composer */
+.composer-attached-scripture {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface-secondary, rgba(212, 175, 55, 0.08));
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 12px;
+  padding: 8px 14px;
+  margin: 10px 16px 6px;
+  font-size: 0.88rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.composer-scripture-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.composer-scripture-icon {
+  font-size: 1.1rem;
+}
+
+.composer-scripture-ref {
+  font-weight: 600;
+  color: var(--secondary, #d4af37);
+}
+
+.composer-scripture-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-secondary, #8e8e93);
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.composer-scripture-toggle input[type="checkbox"] {
+  accent-color: var(--secondary, #d4af37);
+  cursor: pointer;
+}
+
+.composer-scripture-remove {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #8e8e93);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 50%;
+  transition: color 0.15s, background 0.15s;
+}
+
+.composer-scripture-remove:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Reader target verse animation glow when arriving from a verse reference link */
+.verse-item.target-verse-highlight {
+  background: rgba(212, 175, 55, 0.22) !important;
+  border-left: 3px solid var(--secondary) !important;
+  border-radius: 4px;
+  animation: verseGlowPulse 2.8s ease-out forwards;
+}
+
+@keyframes verseGlowPulse {
+  0% {
+    background: rgba(212, 175, 55, 0.48);
+    box-shadow: 0 0 18px rgba(212, 175, 55, 0.45);
+  }
+  60% {
+    background: rgba(212, 175, 55, 0.28);
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.25);
+  }
+  100% {
+    background: rgba(212, 175, 55, 0.15);
+    box-shadow: none;
+  }
+}
+
+/* Slash Command Autocomplete suggestions */
+.command-suggestions {
+  position: fixed;
+  z-index: 3200;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  max-height: 240px;
+  overflow-y: auto;
+  min-width: 240px;
+  max-width: 320px;
+}
+
+.command-suggestion-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.command-suggestion-row:hover,
+.command-suggestion-row.selected {
+  background: var(--background);
+}
+
+.command-suggestion-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgba(212, 175, 55, 0.15);
+  color: var(--secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.command-suggestion-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.command-suggestion-subtitle {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* Scripture Picker Modal in Composer */
+.scripture-picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  z-index: 3500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.scripture-picker-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+  animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.scripture-picker-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.scripture-picker-header h3 {
+  margin: 0;
+  font-size: 17px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scripture-picker-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.scripture-search-wrap {
+  position: relative;
+}
+
+.scripture-search-input {
+  width: 100%;
+  padding: 10px 14px 10px 36px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.scripture-search-input:focus {
+  border-color: var(--secondary);
+}
+
+.scripture-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.scripture-step-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.scripture-books-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.scripture-book-chip {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--background);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all 0.15s ease;
+}
+
+.scripture-book-chip:hover {
+  border-color: var(--secondary);
+  background: rgba(212, 175, 55, 0.08);
+}
+
+.scripture-book-chip.active {
+  background: var(--secondary);
+  color: #121212;
+  border-color: var(--secondary);
+  font-weight: 700;
+}
+
+.scripture-numbers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+  gap: 6px;
+  max-height: 140px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.scripture-num-btn {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--background);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.scripture-num-btn:hover {
+  border-color: var(--secondary);
+  background: rgba(212, 175, 55, 0.08);
+}
+
+.scripture-num-btn.active {
+  background: var(--secondary);
+  color: #121212;
+  border-color: var(--secondary);
+  font-weight: 700;
+}
+
+.scripture-preview-box {
+  background: rgba(212, 175, 55, 0.07);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.scripture-preview-ref {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--secondary);
+  margin-bottom: 4px;
+}
+
+.scripture-preview-text {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text);
+  font-style: italic;
+}
+
+.scripture-picker-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
