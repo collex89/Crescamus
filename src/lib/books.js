@@ -20,7 +20,7 @@ export const BOOKS_LIBRARY = [
     description: "Augustine's own account of his restless youth and conversion, written as a long, searching prayer -- one of the earliest and most influential autobiographies in Western literature.",
     totalChapters: 13,
     sourceUrl: 'https://www.gutenberg.org/ebooks/3296',
-    license: 'Public domain (Pusey translation)',
+    license: 'Public domain (Pusey translation, modernized pronouns)',
   },
   {
     id: 'story-of-a-soul',
