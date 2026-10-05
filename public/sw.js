@@ -80,17 +80,54 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+// Prayer reminders re-alert a minute and two minutes after the first push
+// (see send-reminder-pushes) until the user responds. Tapping or swiping
+// the notification away counts as a response: this tells the server, so
+// the remaining re-alerts for that reminder are skipped. text/plain +
+// no-cors keeps it a "simple" request with no CORS preflight -- we only
+// need it to arrive, never to read the reply.
+const ACK_URL = 'https://dvhiurxvasyytoogixhr.supabase.co/functions/v1/ack-reminder';
+
+async function ackReminder(notification) {
+  const tag = notification.data && notification.data.ackTag;
+  if (!tag) return;
+  try {
+    const subscription = await self.registration.pushManager.getSubscription();
+    if (!subscription) return;
+    await fetch(ACK_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ endpoint: subscription.endpoint, tag }),
+    });
+  } catch {
+    // Offline or blocked -- worst case the user gets the remaining re-alerts.
+  }
+}
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
-        if ('focus' in client) return client.focus();
-      }
-      if (self.clients.openWindow) return self.clients.openWindow('/');
-    })
+    Promise.all([
+      ackReminder(event.notification),
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+        for (const client of clientList) {
+          if ('focus' in client) return client.focus();
+        }
+        if (self.clients.openWindow) return self.clients.openWindow('/');
+      }),
+    ])
   );
 });
+
+self.addEventListener('notificationclose', (event) => {
+  event.waitUntil(ackReminder(event.notification));
+});
+
+// Buzz-pause pattern for prayer reminders, ~10s. Honored where the platform
+// lets a web notification set its own vibration; elsewhere the phone's
+// normal notification buzz applies, and the re-alerts carry the urgency.
+const ALARM_VIBRATION = Array.from({ length: 20 }, (_, i) => (i % 2 === 0 ? 700 : 300));
 
 // Background push delivery (see supabase/functions/send-reminder-pushes).
 // If the app is already open in some tab, its own JS scheduler
@@ -110,11 +147,25 @@ self.addEventListener('push', (event) => {
       const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
       if (clientList.length > 0) return;
 
-      await self.registration.showNotification(payload.title, {
+      const options = {
         body: payload.body,
         icon: '/icons/icon-192.png',
         badge: '/icons/icon-192.png',
-      });
+      };
+      // Reminders carry a per-reminder-per-day tag: each re-alert replaces
+      // the previous notification instead of stacking, and renotify makes
+      // the replacement buzz and sound again rather than updating silently.
+      if (payload.tag) {
+        options.tag = payload.tag;
+        options.renotify = true;
+        options.data = { ackTag: payload.tag };
+      }
+      if (payload.alarm) {
+        options.vibrate = ALARM_VIBRATION;
+        options.requireInteraction = true;
+      }
+
+      await self.registration.showNotification(payload.title, options);
     })()
   );
 });

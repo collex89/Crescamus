@@ -174,8 +174,28 @@ function playAlarmTone(durationMs = 60000) {
   }
 }
 
+// About a minute of buzz-pause alongside the bell, stopped by the same tap
+// that silences it. Android only -- iOS gives websites no vibration access
+// -- and, like the bell, it needs the user to have interacted with the page
+// at least once since it loaded.
+function startAlarmVibration(durationMs = 60000) {
+  if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
+  const pattern = [];
+  for (let t = 0; t < durationMs; t += 2000) pattern.push(1000, 1000);
+  try {
+    navigator.vibrate(pattern);
+  } catch {
+    return;
+  }
+  const stop = () => {
+    try { navigator.vibrate(0); } catch { /* nothing to stop */ }
+  };
+  window.addEventListener('pointerdown', stop, { once: true });
+}
+
 async function fire(title, body) {
   playAlarmTone();
+  startAlarmVibration();
 
   if (getNotificationPermission() !== 'granted') return;
   const options = { body, icon: '/logo.svg', badge: '/logo.svg' };

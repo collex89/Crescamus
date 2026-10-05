@@ -83,6 +83,54 @@ function hhmmInTimezone(timeZone: string | null): string {
   }
 }
 
+// Prayer reminders fire at their time and then re-alert at +1 and +2
+// minutes, each push replacing the last (same tag) with a fresh buzz,
+// until the user taps or dismisses it -- the service worker reports that
+// to ack-reminder, and acked re-alerts are skipped below. A web push can't
+// make the phone vibrate for a full minute, but three alerts across two
+// minutes is the closest equivalent that survives the app being closed.
+const REALERT_OFFSETS = [0, 1, 2];
+
+function validTimezone(timeZone: string | null): string {
+  const tz = timeZone || "UTC";
+  try {
+    new Intl.DateTimeFormat("en-GB", { timeZone: tz });
+    return tz;
+  } catch {
+    return "UTC";
+  }
+}
+
+function minutesInTimezone(tz: string): number {
+  const [h, m] = new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false })
+    .format(new Date())
+    .split(":")
+    .map(Number);
+  return (h % 24) * 60 + m;
+}
+
+function dateInTimezone(tz: string, at: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(at);
+}
+
+// How many minutes past `targetHHMM` it is right now in `tz`, if that's
+// one of the re-alert offsets; otherwise null.
+function realertOffset(targetHHMM: string, tz: string): number | null {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(targetHHMM || "");
+  if (!match) return null;
+  const target = Number(match[1]) * 60 + Number(match[2]);
+  const diff = (minutesInTimezone(tz) - target + 1440) % 1440;
+  return REALERT_OFFSETS.includes(diff) ? diff : null;
+}
+
+// Tag identifying one reminder on one local day. The date is taken at the
+// original fire time, not now, so a 23:59 reminder's 00:00 re-alert still
+// shares its tag (and its ack).
+function reminderTag(key: string, tz: string, offset: number): string {
+  const firedAt = new Date(Date.now() - offset * 60_000);
+  return `rem:${key}:${dateInTimezone(tz, firedAt)}`;
+}
+
 Deno.serve(async (req) => {
   if (req.headers.get("X-Cron-Secret") !== CRON_SECRET) {
     return new Response("Unauthorized", { status: 401 });
@@ -96,25 +144,34 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: profilesError.message }), { status: 500 });
   }
 
-  // userId -> messages due this exact minute
-  const due = new Map<string, { title: string; body: string }[]>();
-  const addDue = (userId: string, title: string, body: string) => {
+  // userId -> messages due this exact minute. Prayer reminders carry a tag
+  // (for re-alert replacement + acks); Continue Reading doesn't.
+  type DueMessage = { title: string; body: string; tag?: string; alarm?: boolean; realert?: boolean };
+  const due = new Map<string, DueMessage[]>();
+  const addDue = (userId: string, msg: DueMessage) => {
     if (!due.has(userId)) due.set(userId, []);
-    due.get(userId)!.push({ title, body });
+    due.get(userId)!.push(msg);
+  };
+  const addReminder = (userId: string, key: string, targetHHMM: string, tz: string, title: string, body: string) => {
+    const offset = realertOffset(targetHHMM, tz);
+    if (offset === null) return;
+    addDue(userId, { title, body, tag: reminderTag(key, tz, offset), alarm: true, realert: offset > 0 });
   };
 
   for (const profile of profiles || []) {
-    const nowHHMM = hhmmInTimezone(profile.timezone);
+    const tz = validTimezone(profile.timezone);
     const enabled = profile.reminders_enabled || {};
     const times = profile.reminder_times || {};
 
-    if (enabled.mercy && (nowHHMM === "03:00" || nowHHMM === "15:00")) {
-      addDue(profile.id, "Divine Mercy Chaplet", "The Hour of Great Mercy. Time to pray the Chaplet of Divine Mercy.");
+    if (enabled.mercy) {
+      for (const t of ["03:00", "15:00"]) {
+        addReminder(profile.id, `mercy-${t.replace(":", "")}`, t, tz, "Divine Mercy Chaplet", "The Hour of Great Mercy. Time to pray the Chaplet of Divine Mercy.");
+      }
     }
 
     for (const [key, meta] of Object.entries(LITURGICAL)) {
-      if (enabled[key] && times[key] && times[key] === nowHHMM) {
-        addDue(profile.id, meta.title, meta.body);
+      if (enabled[key] && times[key]) {
+        addReminder(profile.id, key, times[key], tz, meta.title, meta.body);
       }
     }
   }
@@ -129,10 +186,35 @@ Deno.serve(async (req) => {
 
   const timezoneById = new Map((profiles || []).map((p) => [p.id, p.timezone]));
   for (const intention of intentions || []) {
-    const nowHHMM = hhmmInTimezone(timezoneById.get(intention.user_id) ?? null);
-    if (intention.reminder_time === nowHHMM) {
-      addDue(intention.user_id, "Prayer Intention", intention.text);
+    if (!intention.reminder_time) continue;
+    const tz = validTimezone(timezoneById.get(intention.user_id) ?? null);
+    addReminder(intention.user_id, `int-${intention.id}`, intention.reminder_time, tz, "Prayer Intention", intention.text);
+  }
+
+  // Drop re-alerts the user already responded to (tapped or dismissed the
+  // earlier one). If the lookup fails -- e.g. migration 029 not run yet --
+  // re-alerts just go out unfiltered rather than the whole run failing.
+  const realertTags = new Set<string>();
+  for (const msgs of due.values()) for (const m of msgs) if (m.realert && m.tag) realertTags.add(m.tag);
+  if (realertTags.size > 0) {
+    const { data: acks, error: acksError } = await supabase
+      .from("reminder_acks")
+      .select("user_id, tag")
+      .in("tag", [...realertTags]);
+    if (!acksError) {
+      const acked = new Set((acks || []).map((a) => `${a.user_id}|${a.tag}`));
+      for (const [userId, msgs] of due) {
+        const kept = msgs.filter((m) => !(m.realert && m.tag && acked.has(`${userId}|${m.tag}`)));
+        if (kept.length > 0) due.set(userId, kept);
+        else due.delete(userId);
+      }
     }
+  }
+
+  // Acks only matter for the few minutes a reminder is re-alerting; clear
+  // out anything older than two days once an hour so the table stays tiny.
+  if (new Date().getUTCMinutes() === 0) {
+    await supabase.from("reminder_acks").delete().lt("created_at", new Date(Date.now() - 2 * 86_400_000).toISOString());
   }
 
   // Continue Reading -- every profile, no enabled flag to check, at
@@ -160,9 +242,9 @@ Deno.serve(async (req) => {
       const progress = latestByUser.get(userId);
       const name = progress ? resolveContentName(progress.content_type, progress.content_id) : null;
       if (progress && name) {
-        addDue(userId, "Continue Reading", `${name}, Chapter ${progress.chapter} is waiting for you.`);
+        addDue(userId, { title: "Continue Reading", body: `${name}, Chapter ${progress.chapter} is waiting for you.` });
       } else {
-        addDue(userId, "Time to Grow in Faith", "Take a few minutes today for Scripture or a spiritual classic.");
+        addDue(userId, { title: "Time to Grow in Faith", body: "Take a few minutes today for Scripture or a spiritual classic." });
       }
     }
   }
@@ -185,7 +267,7 @@ Deno.serve(async (req) => {
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          JSON.stringify(msg)
+          JSON.stringify({ title: msg.title, body: msg.body, tag: msg.tag, alarm: msg.alarm })
         );
         sent++;
       } catch (err) {
