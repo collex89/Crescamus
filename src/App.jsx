@@ -2,6 +2,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMe
 import { BIBLE_BOOKS, SAINTS, SAINT_CATEGORIES, AUDIO_TRACKS, STORIES } from './data/mockData';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import * as api from './lib/api';
+import { saveSnapshot, loadSnapshot, readStoredSession, isNetworkError } from './lib/offlineSnapshot';
 import { loadBibleChapter, versionHasBook, BIBLE_VERSIONS } from './lib/bible';
 import { loadBookChapter, BOOKS_LIBRARY } from './lib/books';
 import { getDailyVerse } from './data/dailyVerses';
@@ -806,6 +807,10 @@ export default function App() {
   // Audio element references
   const audioRef = useRef(null);
   const sleepTimerRef = useRef(null);
+  // Play was tapped but there isn't enough audio downloaded to start yet --
+  // shows a spinner in place of the pause icon so a slow connection reads as
+  // "loading", not "the button didn't work".
+  const [audioBuffering, setAudioBuffering] = useState(false);
 
   // Mobile on-screen keyboards shrink the visible (visual) viewport without
   // resizing the layout viewport -- so full-height overlays like the chat
@@ -1195,15 +1200,26 @@ export default function App() {
   // 2b. Track the Supabase auth session (live mode only)
   useEffect(() => {
     if (!isSupabaseConfigured) return;
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+    supabase.auth.getSession().then(({ data, error }) => {
+      let restored = data.session;
+      // Offline, with an access token past its 1-hour life: getSession()
+      // can't refresh it, so it reports no session even though this device
+      // is still signed in. Use the stored session so 2c can show the
+      // offline snapshot; supabase-js refreshes it on its own once the
+      // connection is back (onAuthStateChange below picks that up).
+      if (!restored && error && isNetworkError(error)) restored = readStoredSession();
+      setSession(restored);
       // No persisted session to restore -- nothing left to wait on, so the
       // splash can hand off to the Welcome screen as soon as its minimum
       // time is up. If there IS a session, authKnown instead waits for 2c
       // below to finish loading the profile.
-      if (!data.session) setAuthKnown(true);
+      if (!restored) setAuthKnown(true);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      // getSession() above already handles the initial state. INITIAL_SESSION
+      // would just repeat it -- except offline, where it reports null and
+      // would race with (and undo) the stored-session fallback above.
+      if (event === 'INITIAL_SESSION') return;
       setSession(s);
       // Clicking the emailed reset link lands here with a special recovery
       // session — without this, it silently logs the user into the normal
@@ -1212,6 +1228,59 @@ export default function App() {
     });
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  // Puts a loaded account (fresh from the network, or the offline snapshot
+  // of it) on screen. Shared so both paths fill exactly the same state.
+  const applyAccountData = (profile, data) => {
+    setUsername(profile.full_name || profile.username);
+    setMyUsername(profile.username);
+    setParish(profile.parish || '');
+    setBio(profile.bio || '');
+    setMyAvatar(profile.avatar_url || api.fallbackAvatar(profile.full_name || profile.username));
+    setMyIsVerified(!!profile.is_verified);
+    if (profile.reminder_times) setReminders(prev => ({ ...prev, ...profile.reminder_times }));
+    if (profile.reminders_enabled) setRemindersEnabled(profile.reminders_enabled);
+    if (data.community) setUsers(data.community);
+    setPosts(data.feed || []);
+    setMyFollowerCount(data.followerCount);
+    setNotifications(data.notifications || []);
+    setConversations(data.conversations || []);
+    setUnreadMessageCount(data.unreadMessages || 0);
+    const logs = data.prayerLogs || [];
+    setPrayerLogs(logs);
+    const today = new Date().toISOString().slice(0, 10);
+    const todaysKeys = new Set(logs.filter(l => l.completed_on === today).map(l => l.prayer_key));
+    setPrayersCompleted({
+      morning: todaysKeys.has('morning'),
+      angelus: todaysKeys.has('angelus'),
+      rosary: todaysKeys.has('rosary'),
+      mercy: todaysKeys.has('mercy'),
+      evening: todaysKeys.has('evening')
+    });
+    setPersonalPrayers(data.intentions || []);
+    setBlocks(data.blocks || []);
+    setMutedUserIds(new Set(data.mutes || []));
+    setBibleHighlights(data.highlights || []);
+    setBibleBookmarks(data.bookmarks || []);
+    setLatestReadingProgress(data.readingProgress || null);
+    if (data.readingGoal) setReadingGoal(data.readingGoal);
+    if (data.readingLogs) setReadingLogs(data.readingLogs);
+  };
+
+  // True when the last load couldn't reach the server, so what's on screen
+  // is the offline snapshot. Drives the offline note, and the automatic
+  // reload when the connection comes back (bumping reloadNonce).
+  const [showingOfflineCopy, setShowingOfflineCopy] = useState(false);
+  const [reloadNonce, setReloadNonce] = useState(0);
+  const snapshotShownForRef = useRef(null);
+
+  useEffect(() => {
+    const onOnline = () => {
+      if (showingOfflineCopy) setReloadNonce(n => n + 1);
+    };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [showingOfflineCopy]);
 
   // 2c. When a live session appears, load my profile, the community and the feed
   useEffect(() => {
@@ -1222,7 +1291,41 @@ export default function App() {
     }
     let cancelled = false;
     (async () => {
-      const profile = await api.fetchMyProfile(session.user.id);
+      const userId = session.user.id;
+
+      // Paint Home from last time straight away -- instant on a normal
+      // launch, and the whole picture on an offline one. Only once per
+      // account: this effect also reruns on every hourly token refresh,
+      // and re-applying an older snapshot then would briefly undo anything
+      // done since (a new post, a like).
+      const snapshot = loadSnapshot(userId);
+      if (snapshot && snapshotShownForRef.current !== userId) {
+        snapshotShownForRef.current = userId;
+        applyAccountData(snapshot.profile, snapshot.data);
+        setIsLoggedIn(true);
+        setAuthKnown(true);
+      }
+
+      let profile;
+      try {
+        profile = await api.fetchMyProfile(userId);
+      } catch {
+        if (cancelled) return;
+        // Couldn't reach the server. Keep whatever's on screen (the
+        // snapshot, if there is one) rather than treating this as a signed-
+        // out or deleted account. With no snapshot yet -- a first launch
+        // with no connection -- there's nothing to show but an empty,
+        // signed-in shell; it fills in once the connection is back.
+        if (!snapshot) {
+          const meta = session.user.user_metadata || {};
+          setUsername(meta.full_name || meta.username || '');
+          setMyUsername(meta.username || '');
+          setIsLoggedIn(true);
+          setAuthKnown(true);
+        }
+        setShowingOfflineCopy(true);
+        return;
+      }
       if (cancelled) return;
       if (!profile) {
         // A session that still passes auth but whose profile row is gone --
@@ -1237,61 +1340,51 @@ export default function App() {
         setAuthKnown(true);
         return;
       }
-      const [community, feed, followerCount, notifs, convos, unreadMsgs, logs, intentions, myBlocks, myMutes, highlights, bookmarks, readingProgress, savedGoal, savedReadingLogs] = await Promise.all([
-        api.fetchCommunity(session.user.id),
-        api.fetchFeed(session.user.id),
-        api.fetchMyFollowerCount(session.user.id),
-        api.fetchNotifications(session.user.id),
-        api.fetchConversations(session.user.id),
-        api.fetchUnreadMessageCount(session.user.id),
-        api.fetchPrayerLogs(session.user.id),
-        api.fetchPrayerIntentions(session.user.id),
-        api.fetchBlocks(session.user.id),
-        api.fetchMutes(session.user.id),
-        api.fetchBibleHighlights(session.user.id),
-        api.fetchBibleBookmarks(session.user.id),
-        api.fetchLatestReadingProgress(session.user.id),
-        api.fetchReadingGoal(session.user.id),
-        api.fetchReadingChapterLogs(session.user.id)
-      ]);
+      let data;
+      try {
+        const [community, feed, followerCount, notifications, conversations, unreadMessages, prayerLogs, intentions, blocks, mutes, highlights, bookmarks, readingProgress, readingGoal, readingLogs] = await Promise.all([
+          api.fetchCommunity(userId),
+          api.fetchFeed(userId),
+          api.fetchMyFollowerCount(userId),
+          api.fetchNotifications(userId),
+          api.fetchConversations(userId),
+          api.fetchUnreadMessageCount(userId),
+          api.fetchPrayerLogs(userId),
+          api.fetchPrayerIntentions(userId),
+          api.fetchBlocks(userId),
+          api.fetchMutes(userId),
+          api.fetchBibleHighlights(userId),
+          api.fetchBibleBookmarks(userId),
+          api.fetchLatestReadingProgress(userId),
+          api.fetchReadingGoal(userId),
+          api.fetchReadingChapterLogs(userId)
+        ]);
+        // Most of these fetchers return empty lists on a failed request
+        // rather than throwing, so a connection that dropped mid-load would
+        // otherwise look like "no posts, no notifications" -- and get saved
+        // over a perfectly good snapshot.
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error('offline');
+        data = { community, feed, followerCount, notifications, conversations, unreadMessages, prayerLogs, intentions, blocks, mutes, highlights, bookmarks, readingProgress, readingGoal, readingLogs };
+      } catch {
+        // Connection dropped between the profile and the rest -- same as
+        // offline: keep the snapshot on screen, try again when back online.
+        if (cancelled) return;
+        if (snapshot) {
+          setShowingOfflineCopy(true);
+          return;
+        }
+        data = null;
+      }
       if (cancelled) return;
-      setUsername(profile.full_name || profile.username);
-      setMyUsername(profile.username);
-      setParish(profile.parish || '');
-      setBio(profile.bio || '');
-      setMyAvatar(profile.avatar_url || api.fallbackAvatar(profile.full_name || profile.username));
-      setMyIsVerified(!!profile.is_verified);
-      if (profile.reminder_times) setReminders(prev => ({ ...prev, ...profile.reminder_times }));
-      if (profile.reminders_enabled) setRemindersEnabled(profile.reminders_enabled);
-      if (community) setUsers(community);
-      setPosts(feed || []);
-      setMyFollowerCount(followerCount);
-      setNotifications(notifs);
-      setConversations(convos);
-      setUnreadMessageCount(unreadMsgs);
-      setPrayerLogs(logs);
-      const today = new Date().toISOString().slice(0, 10);
-      const todaysKeys = new Set(logs.filter(l => l.completed_on === today).map(l => l.prayer_key));
-      setPrayersCompleted({
-        morning: todaysKeys.has('morning'),
-        angelus: todaysKeys.has('angelus'),
-        rosary: todaysKeys.has('rosary'),
-        mercy: todaysKeys.has('mercy'),
-        evening: todaysKeys.has('evening')
-      });
-      setPersonalPrayers(intentions);
-      setBlocks(myBlocks);
-      setMutedUserIds(new Set(myMutes));
-      setBibleHighlights(highlights);
-      setBibleBookmarks(bookmarks);
-      setLatestReadingProgress(readingProgress);
-      if (savedGoal) setReadingGoal(savedGoal);
-      if (savedReadingLogs) setReadingLogs(savedReadingLogs);
+      applyAccountData(profile, data || {});
+      if (data) saveSnapshot(userId, profile, data);
+      snapshotShownForRef.current = userId;
+      setShowingOfflineCopy(!data);
       setIsLoggedIn(true);
       setAuthKnown(true);
     })();
     return () => { cancelled = true; };
-  }, [session]);
+  }, [session, reloadNonce]);
 
   // 2c-2. Live notifications: refresh the list whenever a new one arrives
   // (likes, comments, follows are inserted server-side by DB triggers).
@@ -1402,7 +1495,11 @@ export default function App() {
     if (!audioRef.current) return;
     
     if (isPlaying) {
+      // HAVE_FUTURE_DATA (3): enough buffered to actually start. Below that,
+      // play() waits on the network; the element's 'playing' event clears it.
+      if (audioRef.current.readyState < 3) setAudioBuffering(true);
       audioRef.current.play().catch(() => {
+        setAudioBuffering(false);
         setIsPlaying(false);
       });
     } else {
@@ -3727,6 +3824,10 @@ export default function App() {
         onTimeUpdate={onTimeUpdate}
         onLoadedMetadata={onLoadedMetadata}
         onEnded={onTrackEnded}
+        onWaiting={() => setAudioBuffering(true)}
+        onPlaying={() => setAudioBuffering(false)}
+        onPause={() => setAudioBuffering(false)}
+        onError={() => setAudioBuffering(false)}
       />
 
       {/* @MENTION AUTOCOMPLETE -- one shared dropdown for every post/comment
@@ -4221,6 +4322,12 @@ export default function App() {
                 </button>
               </div>
             </div>
+
+            {showingOfflineCopy && (
+              <div className="offline-banner" role="status">
+                You're offline, showing what you saw last time. It'll update when you reconnect.
+              </div>
+            )}
 
             {/* NOTIFICATIONS SLIDE DRAWER */}
             {notificationsOpen && (
@@ -6604,7 +6711,9 @@ export default function App() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{formatTime(track.duration)}</span>
                             {isCurrent && isPlaying ? (
-                              <span className="track-status-icon" style={{ color: 'var(--primary)' }}><Icons.Volume /></span>
+                              <span className="track-status-icon" style={{ color: 'var(--primary)' }}>
+                                {audioBuffering ? <span className="audio-loading-spinner" aria-label="Loading"><Icons.RotateCw /></span> : <Icons.Volume />}
+                              </span>
                             ) : (
                               <span className="track-status-icon"><Icons.Play /></span>
                             )}
@@ -6791,7 +6900,7 @@ export default function App() {
 
                 <div className="mini-player-controls" onClick={(e) => e.stopPropagation()}>
                   <button className="icon-btn" onClick={() => setIsPlaying(!isPlaying)}>
-                    {isPlaying ? <Icons.Pause /> : <Icons.Play />}
+                    {isPlaying ? (audioBuffering ? <span className="audio-loading-spinner" aria-label="Loading"><Icons.RotateCw /></span> : <Icons.Pause />) : <Icons.Play />}
                   </button>
                   <button className="icon-btn" onClick={() => setPlayerExpanded(true)}>
                     <Icons.ChevronDown />
@@ -6864,7 +6973,7 @@ export default function App() {
                       <Icons.RotateCcw /> <span>15s</span>
                     </button>
                     <button className="play-pause-large" onClick={() => setIsPlaying(!isPlaying)}>
-                      {isPlaying ? <Icons.Pause /> : <Icons.Play />}
+                      {isPlaying ? (audioBuffering ? <span className="audio-loading-spinner" aria-label="Loading"><Icons.RotateCw /></span> : <Icons.Pause />) : <Icons.Play />}
                     </button>
                     <button className="icon-btn seek-btn" onClick={() => handleSeek(Math.min(trackDuration, trackProgress + 15))}>
                       <span>15s</span> <Icons.RotateCw />

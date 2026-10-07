@@ -1052,6 +1052,16 @@ p {
   z-index: 100;
 }
 
+.offline-banner {
+  padding: 8px 20px;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--text-secondary);
+  background: rgba(var(--secondary-rgb), 0.12);
+  border-bottom: 1px solid var(--border);
+}
+
 .header-brand {
   display: flex;
   align-items: center;
@@ -1757,6 +1767,11 @@ p {
   overflow: hidden;
   transition: height 0.2s ease;
   margin-bottom: 4px;
+}
+
+.audio-loading-spinner {
+  display: inline-flex;
+  animation: spinSlow 0.9s linear infinite;
 }
 
 .pull-refresh-spinner {

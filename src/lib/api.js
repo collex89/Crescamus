@@ -1,6 +1,7 @@
 // Data layer for Crescamus. Every function maps database rows into the
 // exact shapes the UI already renders, so App.jsx stays presentation-only.
 import { supabase } from './supabase';
+import { clearSnapshot } from './offlineSnapshot';
 
 // Cache-Control max-age (seconds) stamped onto uploads that live at a URL
 // whose bytes can never change: post media gets a unique timestamped path
@@ -65,6 +66,7 @@ export async function signInWithProvider(provider) {
 }
 
 export async function signOut() {
+  clearSnapshot();
   await supabase.auth.signOut();
 }
 
@@ -104,15 +106,19 @@ export async function fetchMyFollowerCount(userId) {
   return count || 0;
 }
 
+// Returns null only when the profile row genuinely doesn't exist (a deleted
+// account). A failed request -- e.g. no connection -- throws instead, so the
+// caller can't mistake "offline" for "account gone" and sign the user out.
 export async function fetchMyProfile(userId) {
   // The profile is created by a DB trigger on signup; retry once in case
   // this runs before the trigger has committed.
   for (let attempt = 0; attempt < 2; attempt++) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .maybeSingle();
+    if (error) throw error;
     if (data) return data;
     await new Promise(r => setTimeout(r, 800));
   }

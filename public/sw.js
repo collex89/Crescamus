@@ -22,15 +22,59 @@ self.addEventListener('activate', (event) => {
     Promise.all([
       self.clients.claim(),
       caches.keys().then((names) =>
-        Promise.all(names.filter((name) => name !== CACHE_NAME).map((name) => caches.delete(name)))
+        Promise.all(
+          names
+            .filter((name) => name !== CACHE_NAME && name !== IMAGE_CACHE)
+            .map((name) => caches.delete(name))
+        )
       ),
     ])
   );
 });
 
+// Profile photos and post images live in Supabase Storage. Kept here so an
+// offline launch shows the same faces and pictures as last time instead of
+// broken images. Cache-first (a stored file never changes under the same
+// URL), capped so it can't grow without limit.
+const IMAGE_CACHE = 'crescamus-images-v1';
+const IMAGE_CACHE_MAX_ENTRIES = 300;
+const STORAGE_IMAGE_PREFIX = 'https://dvhiurxvasyytoogixhr.supabase.co/storage/v1/object/public/';
+
+async function trimImageCache(cache) {
+  const keys = await cache.keys();
+  // cache.keys() returns insertion order, so the oldest go first.
+  for (let i = 0; i < keys.length - IMAGE_CACHE_MAX_ENTRIES; i++) await cache.delete(keys[i]);
+}
+
+async function cachedStorageImage(request) {
+  const cache = await caches.open(IMAGE_CACHE);
+  const cached = await cache.match(request.url);
+  if (cached) return cached;
+  // Re-requested in cors mode: an <img> request is no-cors, and caching its
+  // opaque response would count ~7MB against storage quota per image in
+  // Chrome. Supabase Storage sends Access-Control-Allow-Origin: *, so the
+  // cors response is real, small, and still fine to hand back to an <img>.
+  const response = await fetch(request.url, { mode: 'cors', credentials: 'omit' });
+  if (response.ok) {
+    await cache.put(request.url, response.clone());
+    trimImageCache(cache);
+  }
+  return response;
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
+
+  // Audio streams in byte ranges (206 responses), which the Cache API
+  // can't store -- intercepting them only added a hop and a failed cache
+  // write on every chunk. The browser's own HTTP cache handles media.
+  if (request.destination === 'audio' || request.destination === 'video' || request.headers.has('range')) return;
+
+  if (request.url.startsWith(STORAGE_IMAGE_PREFIX) && request.destination === 'image') {
+    event.respondWith(cachedStorageImage(request).catch(() => fetch(request)));
+    return;
+  }
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return; // leave Supabase/API/font calls alone

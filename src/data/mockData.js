@@ -539,7 +539,7 @@ export const AUDIO_TRACKS = [
     artist: "Michèle Laporte & Philippe Malgouyres",
     category: "Hymns",
     duration: 236,
-    url: "https://archive.org/download/CesarFranckPanisAngelicus/Franck-PanisAngelicus_64kb.mp3",
+    url: "/audio/hymn_panisangelicus.mp3",
     cover: "/logo.svg",
     sourceUrl: "https://archive.org/details/CesarFranckPanisAngelicus",
     license: "Public domain"
@@ -594,7 +594,7 @@ export const AUDIO_TRACKS = [
     artist: "Christian Peschken",
     category: "Rosary",
     duration: 1190,
-    url: "https://archive.org/download/TheSoundOfTheRosary/JoyfulMysteries.mp3",
+    url: "/audio/rosary_joyful.mp3",
     cover: "/logo.svg",
     sourceUrl: "https://archive.org/details/TheSoundOfTheRosary",
     license: "CC0 (Public domain)"
@@ -605,7 +605,7 @@ export const AUDIO_TRACKS = [
     artist: "Christian Peschken",
     category: "Rosary",
     duration: 1170,
-    url: "https://archive.org/download/TheSoundOfTheRosary/SorrowfulMysteries.mp3",
+    url: "/audio/rosary_sorrowful.mp3",
     cover: "/logo.svg",
     sourceUrl: "https://archive.org/details/TheSoundOfTheRosary",
     license: "CC0 (Public domain)"
@@ -616,7 +616,7 @@ export const AUDIO_TRACKS = [
     artist: "Christian Peschken",
     category: "Rosary",
     duration: 1201,
-    url: "https://archive.org/download/TheSoundOfTheRosary/GloriousMysteries.mp3",
+    url: "/audio/rosary_glorious.mp3",
     cover: "/logo.svg",
     sourceUrl: "https://archive.org/details/TheSoundOfTheRosary",
     license: "CC0 (Public domain)"
@@ -627,7 +627,7 @@ export const AUDIO_TRACKS = [
     artist: "Christian Peschken",
     category: "Rosary",
     duration: 1205,
-    url: "https://archive.org/download/TheSoundOfTheRosary/LuminousMysteries.mp3",
+    url: "/audio/rosary_luminous.mp3",
     cover: "/logo.svg",
     sourceUrl: "https://archive.org/details/TheSoundOfTheRosary",
     license: "CC0 (Public domain)"
@@ -638,7 +638,7 @@ export const AUDIO_TRACKS = [
     artist: "Ron Altman",
     category: "Readings",
     duration: 4121,
-    url: "https://archive.org/download/bible_dra_complete_2401_librivox/bible1899_001_dra.mp3",
+    url: "/audio/reading_genesis.mp3",
     cover: "/logo.svg",
     sourceUrl: "https://archive.org/details/bible_dra_complete_2401_librivox",
     license: "Public domain (LibriVox)"
@@ -649,7 +649,7 @@ export const AUDIO_TRACKS = [
     artist: "Ron Altman",
     category: "Readings",
     duration: 4056,
-    url: "https://archive.org/download/bible_dra_complete_2401_librivox/bible1899_111_dra.mp3",
+    url: "/audio/reading_john.mp3",
     cover: "/logo.svg",
     sourceUrl: "https://archive.org/details/bible_dra_complete_2401_librivox",
     license: "Public domain (LibriVox)"
@@ -660,7 +660,7 @@ export const AUDIO_TRACKS = [
     artist: "Ron Altman",
     category: "Readings",
     duration: 1157,
-    url: "https://archive.org/download/bible_dra_complete_2401_librivox/bible1899_136_dra.mp3",
+    url: "/audio/reading_1john.mp3",
     cover: "/logo.svg",
     sourceUrl: "https://archive.org/details/bible_dra_complete_2401_librivox",
     license: "Public domain (LibriVox)"

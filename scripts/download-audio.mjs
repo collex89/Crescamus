@@ -1,9 +1,9 @@
 // Downloads real, license-verified chant recordings (mp3 transcodes from
 // Wikimedia Commons, small files) and self-hosts them in public/audio/.
-// Rosary and long-form Scripture readings are NOT downloaded — those files
-// are 15-60MB each (LibriVox/archive.org), too large to bundle; the app
-// streams them directly from Archive.org instead (CORS-open, range-request
-// capable, built for exactly this).
+// The Rosary and long-form Scripture readings are handled separately by
+// rehost-long-audio.mjs, which transcodes them for speech first -- they used
+// to stream straight from archive.org, but its 4-13s time-to-first-byte made
+// every tap on them feel broken.
 
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import path from 'path';
