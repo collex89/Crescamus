@@ -3,6 +3,7 @@ import { BIBLE_BOOKS, SAINTS, SAINT_CATEGORIES, AUDIO_TRACKS, STORIES } from './
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import * as api from './lib/api';
 import { saveSnapshot, loadSnapshot, readStoredSession, isNetworkError } from './lib/offlineSnapshot';
+import InstallPrompt from './components/InstallPrompt';
 import { loadBibleChapter, versionHasBook, BIBLE_VERSIONS } from './lib/bible';
 import { loadBookChapter, BOOKS_LIBRARY } from './lib/books';
 import { getDailyVerse } from './data/dailyVerses';
@@ -3790,6 +3791,9 @@ export default function App() {
 
   return (
     <div className={`device-container ${isLoggedIn && !passwordRecoveryMode ? 'app-mode' : 'auth-mode'}`} style={{ '--bible-font-size': `${bibleFontSize}px` }}>
+      {/* Signed-in only: on the welcome/sign-up screens it would sit on top
+          of the very button a first-time visitor is deciding whether to tap. */}
+      <InstallPrompt enabled={isLoggedIn && !splashActive && !passwordRecoveryMode} aboveNav />
       {/* Notch element */}
       <div className="device-notch">
         <div className="device-speaker"></div>

@@ -1062,6 +1062,106 @@ p {
   z-index: 100;
 }
 
+/* "Get the Crescamus app" card (src/components/InstallPrompt.jsx). Sits
+   over the bottom of the screen, above the tab bar when there is one, on
+   top of the mini player for the few seconds it's up. */
+.install-prompt {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 1500;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.install-prompt.above-nav {
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 12px);
+}
+
+.install-prompt-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.install-prompt-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.install-prompt-body h4 {
+  font-size: 15px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.install-prompt-body p {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.install-prompt-body strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.install-prompt-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--primary);
+  font-weight: 600;
+  vertical-align: bottom;
+}
+
+.install-prompt-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.install-prompt-primary,
+.install-prompt-secondary {
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.install-prompt-primary {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+}
+
+.install-prompt-secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+/* Desktop signed-in layout has a sidebar instead of a bottom tab bar. */
+@media (hover: hover) and (pointer: fine) and (min-width: 640px) {
+  .install-prompt,
+  .install-prompt.above-nav {
+    left: auto;
+    right: 24px;
+    bottom: 24px;
+    max-width: 380px;
+  }
+}
+
 .offline-banner {
   padding: 8px 20px;
   font-size: 12px;
