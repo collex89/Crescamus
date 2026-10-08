@@ -157,6 +157,7 @@ body {
      never showed it, which is why this looked Chrome-only. */
   min-height: 100vh; /* fallback for browsers without svh support */
   min-height: 100svh;
+  min-height: var(--app-height, 100svh); /* measured in main.jsx -- see there */
   overflow: hidden;
 }
 
@@ -184,7 +185,16 @@ body {
      trades a small gap when the address bar auto-hides for never
      overflowing the real visible area. */
   height: 100svh;
-  background: #1e1e24;
+  /* The real visible height, measured in main.jsx. svh alone left an empty
+     strip under the bottom nav in an iPhone Home Screen app. */
+  height: var(--app-height, 100svh);
+  /* An iPhone Home Screen app draws the page under the status bar (the
+     black-translucent setting in index.html), so without this the clock and
+     battery sat on top of the header. env() is 0 everywhere that doesn't
+     (Android, desktop, Safari tabs). The background shows through that
+     strip, so it matches the header to read as one bar. */
+  padding-top: env(safe-area-inset-top, 0px);
+  background: var(--surface);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2947,7 +2957,11 @@ textarea.form-input {
      for Android pans for the keyboard it rides up out of view and exposes
      the screen behind it along the bottom. Must stay after inset, which
      sets top itself. (top + height means bottom is ignored, as intended.) */
-  height: var(--visual-vh, 100%);
+  /* Minus the status-bar padding on .device-container: this overlay starts
+     that far down the screen, so the full visual-viewport height would run
+     past the bottom (or under an open keyboard) by the same amount. 0 on
+     every platform without that padding. */
+  height: calc(var(--visual-vh, 100%) - env(safe-area-inset-top, 0px));
   top: var(--visual-top, 0px);
   background: var(--surface);
   z-index: 1800;
@@ -3909,7 +3923,9 @@ textarea.form-input {
 
 .image-lightbox-close {
   position: absolute;
-  top: 20px;
+  /* The lightbox is position: fixed over the whole screen, so on an iPhone
+     Home Screen app this would otherwise sit under the status bar. */
+  top: calc(20px + env(safe-area-inset-top, 0px));
   right: 20px;
   color: #fff;
   background: rgba(255, 255, 255, 0.12);
