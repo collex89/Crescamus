@@ -34,3 +34,13 @@ export const ABOUT_FEATURES = [
 ];
 
 export const CONTENT_SOURCING_NOTE = `Scripture, Saint biographies, and audio are drawn from public-domain and Creative Commons sources (Wikipedia/Wikimedia Commons, LibriVox, Internet Archive), with attribution shown in the app where it applies.`;
+
+// Official contact and social accounts, shown in Settings and on the About
+// page. hello@ is routed to the team inbox by Cloudflare Email Routing; the
+// Privacy Policy, Terms, and public pages in /public use the same address.
+export const CONTACT_EMAIL = 'hello@crescamus.app';
+
+export const SOCIAL_LINKS = [
+  { id: 'instagram', label: 'Instagram', handle: '@crescamus.app', icon: 'Instagram', url: 'https://www.instagram.com/crescamus.app/' },
+  { id: 'linkedin', label: 'LinkedIn', handle: 'Crescamus', icon: 'LinkedIn', url: 'https://www.linkedin.com/company/crescamusapp/' },
+];

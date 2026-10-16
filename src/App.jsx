@@ -8,7 +8,7 @@ import { loadBibleChapter, versionHasBook, BIBLE_VERSIONS } from './lib/bible';
 import { loadBookChapter, BOOKS_LIBRARY } from './lib/books';
 import { getDailyVerse } from './data/dailyVerses';
 import { PRIVACY_POLICY, TERMS_OF_SERVICE } from './data/legalContent';
-import { MISSION, ABOUT_FEATURES, CONTENT_SOURCING_NOTE } from './data/aboutContent';
+import { MISSION, ABOUT_FEATURES, CONTENT_SOURCING_NOTE, CONTACT_EMAIL, SOCIAL_LINKS } from './data/aboutContent';
 import { startReminderScheduler, requestNotificationPermission, getNotificationPermission, isNotificationSupported, unlockAlarmAudio, subscribeToPushNotifications, getDeviceTimezone } from './lib/reminders';
 import { renderFormattedText, wrapSelection, prefixLines, insertAtCursor } from './lib/textFormatting';
 import { downloadVerseImage } from './lib/verseImage';
@@ -480,6 +480,26 @@ const Icons = {
   Facebook: () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M15 3h-2a5 5 0 0 0-5 5v3H6v4h2v6h4v-6h3l1-4h-4V8a1 1 0 0 1 1-1h3Z"/>
+    </svg>
+  ),
+  Instagram: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+    </svg>
+  ),
+  LinkedIn: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
+      <rect x="2" y="9" width="4" height="12"/>
+      <circle cx="4" cy="4" r="2"/>
+    </svg>
+  ),
+  Mail: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2"/>
+      <path d="m22 7-10 6L2 7"/>
     </svg>
   ),
   LinkIcon: () => (
@@ -5215,6 +5235,21 @@ export default function App() {
                       <Icons.ChevronRight />
                     </button>
 
+                    <h4 className="settings-section-title">Follow &amp; Contact</h4>
+                    {SOCIAL_LINKS.map(link => {
+                      const LinkIcon = Icons[link.icon];
+                      return (
+                        <a key={link.id} className="settings-row" href={link.url} target="_blank" rel="noopener noreferrer">
+                          <span><LinkIcon /> {link.label}</span>
+                          <span className="settings-row-value">{link.handle}</span>
+                        </a>
+                      );
+                    })}
+                    <a className="settings-row" href={`mailto:${CONTACT_EMAIL}`}>
+                      <span><Icons.Mail /> Email us</span>
+                      <span className="settings-row-value">{CONTACT_EMAIL}</span>
+                    </a>
+
                     <h4 className="settings-section-title">Legal</h4>
                     <button className="settings-row" onClick={() => setLegalView('privacy')}>
                       <span><Icons.Shield /> Privacy Policy</span>
@@ -5279,6 +5314,21 @@ export default function App() {
                   })}
 
                   <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: '20px 0' }}>{CONTENT_SOURCING_NOTE}</p>
+
+                  <h4 className="settings-section-title">Follow &amp; Contact</h4>
+                  <div className="about-social-links">
+                    {SOCIAL_LINKS.map(link => {
+                      const LinkIcon = Icons[link.icon];
+                      return (
+                        <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" aria-label={`Crescamus on ${link.label}`}>
+                          <LinkIcon /> {link.label}
+                        </a>
+                      );
+                    })}
+                    <a href={`mailto:${CONTACT_EMAIL}`} aria-label={`Email ${CONTACT_EMAIL}`}>
+                      <Icons.Mail /> {CONTACT_EMAIL}
+                    </a>
+                  </div>
 
                   <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginTop: '8px' }}>
                     <button className="feed-action-btn" onClick={() => { setAboutOpen(false); setLegalView('privacy'); }}>

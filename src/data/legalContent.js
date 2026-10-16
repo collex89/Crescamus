@@ -50,7 +50,7 @@ If we make material changes to this policy, we'll update the "Last updated" date
 
 9. CONTACT
 
-Questions about this policy or your data can be sent to crescamus.app@gmail.com.
+Questions about this policy or your data can be sent to hello@crescamus.app.
 `.trim();
 
 export const TERMS_OF_SERVICE = `
@@ -104,5 +104,5 @@ We may update these Terms from time to time. Continued use of the app after chan
 
 12. CONTACT
 
-Questions about these Terms can be sent to crescamus.app@gmail.com.
+Questions about these Terms can be sent to hello@crescamus.app.
 `.trim();

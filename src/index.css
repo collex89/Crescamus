@@ -4259,6 +4259,53 @@ textarea.form-input {
   color: var(--notification);
 }
 
+/* Settings rows that are links (social accounts, email) rather than buttons. */
+a.settings-row {
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.settings-row .settings-row-value {
+  color: var(--text-secondary);
+  font-weight: 400;
+  font-size: 12px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.about-social-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 4px 0 20px;
+}
+
+.about-social-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: var(--transition);
+}
+
+.about-social-links a:hover {
+  border-color: var(--primary);
+}
+
+.about-social-links svg {
+  width: 16px;
+  height: 16px;
+}
+
 .settings-row.danger svg:first-child {
   color: var(--notification);
 }

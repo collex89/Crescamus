@@ -32,6 +32,23 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <title>Crescamus – Growing Together in Christ</title>
+    <!-- Tells search engines these accounts are the official ones for
+         crescamus.app (shown with the site in results). Keep in step with
+         SOCIAL_LINKS / CONTACT_EMAIL in src/data/aboutContent.js. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Crescamus",
+        "url": "https://www.crescamus.app",
+        "logo": "https://www.crescamus.app/icons/icon-512.png",
+        "email": "hello@crescamus.app",
+        "sameAs": [
+          "https://www.instagram.com/crescamus.app/",
+          "https://www.linkedin.com/company/crescamusapp/"
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
