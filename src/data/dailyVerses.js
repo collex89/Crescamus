@@ -155,7 +155,7 @@ export const DAILY_VERSES = [
   { book: 'jon', chapter: 2, verse: 2, text: 'He said, "I called because of my affliction to Yahweh. He answered me. Out of the belly of Sheol I cried. You heard my voice."' },
   { book: 'mic', chapter: 7, verse: 8, text: 'Don\'t rejoice against me, my enemy. When I fall, I will arise. When I sit in darkness, Yahweh will be a light to me.' },
   { book: 'nah', chapter: 1, verse: 7, text: 'Yahweh is good, a stronghold in the day of trouble; and he knows those who take refuge in him.' },
-  { book: 'hab', chapter: 3, verse: 19, text: 'Yahweh, the Lord, is my strength. He makes my feet like deer\'s feet, and enables me to go in high places. For the music director, on my stringed instruments.' },
+  { book: 'hab', chapter: 3, verse: 19, text: 'Yahweh, the Lord, is my strength. He makes my feet like deer\'s feet, and enables me to go in high places.' },
   { book: 'zep', chapter: 3, verse: 17, text: 'Yahweh, your God, is in the midst of you, a mighty one who will save. He will rejoice over you with joy. He will rest in his love. He will rejoice over you with singing.' },
   { book: 'hag', chapter: 2, verse: 9, text: '\'The latter glory of this house will be greater than the former,\' says Yahweh of Armies; \'and in this place will I give peace,\' says Yahweh of Armies.' },
   { book: 'zec', chapter: 4, verse: 6, text: 'Then he answered and spoke to me, saying, "This is the word of Yahweh to Zerubbabel, saying, \'Not by might, nor by power, but by my Spirit,\' says Yahweh of Armies."' },

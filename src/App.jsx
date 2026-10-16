@@ -6108,7 +6108,11 @@ export default function App() {
                             <Icons.Share /> Share
                           </button>
                           {verseShareMenuOpen && (
-                            <div className="post-menu-dropdown" style={{ left: 0, right: 0, width: '100%' }}>
+                            // Opens upward: the Share button sits low in this full-screen
+                            // sheet with "Read" below it, so a downward menu ran off the
+                            // bottom of shorter screens, and the sheet doesn't scroll.
+                            // The height cap lets it scroll inside itself on tiny screens.
+                            <div className="post-menu-dropdown drop-up" style={{ left: 0, right: 0, width: '100%', maxHeight: '55vh' }}>
                               {typeof navigator !== 'undefined' && navigator.share && (
                                 <button className="post-menu-item" onClick={shareVerseNative}>
                                   <Icons.Share /> More options...
