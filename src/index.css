@@ -1162,6 +1162,207 @@ p {
   }
 }
 
+/* "Get app" buttons + install help sheet (src/components/GetAppButton.jsx) */
+.get-app-header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--secondary-rgb), 0.55);
+  background: rgba(var(--secondary-rgb), 0.12);
+  color: var(--primary);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.get-app-header-btn:hover {
+  background: rgba(var(--secondary-rgb), 0.2);
+}
+
+/* Phones: the brand name and three icons already fill most of the header,
+   so the label shortens to "App", and to just the icon on the narrowest. */
+@media (max-width: 419px) {
+  .get-app-header-get {
+    display: none;
+  }
+  .get-app-header-app {
+    text-transform: capitalize;
+  }
+  .app-header {
+    padding: 0 16px;
+  }
+  .app-header .header-actions {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 374px) {
+  .get-app-header-btn {
+    padding: 6px 8px;
+  }
+  .get-app-header-label {
+    display: none;
+  }
+}
+
+.get-app-welcome-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 320px;
+  margin-top: 12px;
+  padding: 13px 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--secondary-rgb), 0.6);
+  background: transparent;
+  color: var(--primary);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.get-app-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.get-app-sheet {
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 18px 22px calc(22px + env(safe-area-inset-bottom, 0px));
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.18);
+}
+
+@media (min-width: 640px) {
+  .get-app-overlay {
+    align-items: center;
+  }
+  .get-app-sheet {
+    border-radius: 24px;
+    padding-bottom: 22px;
+  }
+}
+
+.get-app-sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.get-app-sheet-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+}
+
+.get-app-sheet h3 {
+  font-size: 19px;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.get-app-intro {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+}
+
+.get-app-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.get-app-steps li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 14.5px;
+  line-height: 1.6;
+}
+
+.get-app-step-num {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--primary);
+  background: rgba(var(--secondary-rgb), 0.18);
+}
+
+.get-app-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 7px;
+  border-radius: 6px;
+  background: rgba(var(--primary-rgb), 0.08);
+  color: var(--primary);
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+
+.get-app-sheet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.get-app-primary,
+.get-app-secondary {
+  display: block;
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: 999px;
+  text-align: center;
+  text-decoration: none;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.get-app-primary {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+}
+
+.get-app-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
 .offline-banner {
   padding: 8px 20px;
   font-size: 12px;

@@ -4,6 +4,7 @@ import { supabase, isSupabaseConfigured } from './lib/supabase';
 import * as api from './lib/api';
 import { saveSnapshot, loadSnapshot, readStoredSession, isNetworkError } from './lib/offlineSnapshot';
 import InstallPrompt from './components/InstallPrompt';
+import GetAppButton from './components/GetAppButton';
 import { loadBibleChapter, versionHasBook, BIBLE_VERSIONS } from './lib/bible';
 import { loadBookChapter, BOOKS_LIBRARY } from './lib/books';
 import { getDailyVerse } from './data/dailyVerses';
@@ -4035,9 +4036,12 @@ export default function App() {
 
             <div className="welcome-action-slot">
               {welcomeStage === 'hero' && (
-                <button className="auth-btn welcome-get-started-btn" onClick={() => setWelcomeStage('chooser')}>
-                  Get Started
-                </button>
+                <>
+                  <button className="auth-btn welcome-get-started-btn" onClick={() => setWelcomeStage('chooser')}>
+                    Get Started
+                  </button>
+                  <GetAppButton variant="welcome" />
+                </>
               )}
 
               {welcomeStage === 'chooser' && (
@@ -4306,6 +4310,8 @@ export default function App() {
               </div>
 
               <div className="header-actions">
+                {/* Install button -- hidden inside the installed app */}
+                <GetAppButton />
                 {/* Search Toggle */}
                 <button className={`icon-btn ${subView === 'search' ? 'active' : ''}`} onClick={() => setSubView(subView === 'search' ? null : 'search')}>
                   <Icons.Search />
