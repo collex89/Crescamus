@@ -2688,12 +2688,20 @@ export default function App() {
     setComposerOpen(true);
   };
 
-  // Auto-sizes post composer textarea so typing area expands naturally with text
+  // Auto-sizes post composer textarea so typing area expands naturally with text.
+  // Measuring means briefly collapsing it to height:auto, which on its own
+  // would knock both the box's scroll and the sheet's scroll (the box gets
+  // shorter for a moment, so the sheet clamps) -- so both are put back.
   useEffect(() => {
     if (!composerOpen || !composerTextareaRef.current) return;
     const el = composerTextareaRef.current;
+    const sheet = el.closest('.scrollable');
+    const boxScroll = el.scrollTop;
+    const sheetScroll = sheet?.scrollTop ?? 0;
     el.style.height = 'auto';
     el.style.height = `${Math.max(120, Math.min(el.scrollHeight, 360))}px`;
+    el.scrollTop = boxScroll;
+    if (sheet) sheet.scrollTop = sheetScroll;
   }, [newPostText, composerOpen]);
 
   const handleComposerMediaChange = (e) => {
@@ -4913,7 +4921,9 @@ export default function App() {
                 </div>
 
                 <div className="scrollable" style={{ paddingBottom: '24px' }}>
-                  <div className="composer-format-bar">
+                  {/* preventDefault on mousedown keeps focus (and the phone keyboard)
+                      in the text box when a toolbar button is tapped. */}
+                  <div className="composer-format-bar" onMouseDown={(e) => { if (e.target.closest('button')) e.preventDefault(); }}>
                     <button type="button" className="composer-format-btn" title="Bold" onClick={() => wrapSelection(composerTextareaRef.current, newPostText, setNewPostText, '**')}>
                       <Icons.Bold />
                     </button>

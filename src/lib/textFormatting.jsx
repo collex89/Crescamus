@@ -234,6 +234,24 @@ export function renderFormattedText(text, onMentionClick, onVerseClick, renderEm
 }
 
 
+// Replacing a textarea's value (which React does after setValue) moves the
+// browser's caret to the very end and scrolls the box to its last line, so
+// in a long post, bolding the first word used to throw you to the bottom.
+// Every toolbar edit goes through here: it remembers where the box was
+// scrolled, then puts the selection and the scroll position back once React
+// has written the new text. focus({ preventScroll }) stops the browser from
+// jumping the page to bring the box into view as well.
+function applyEdit(textarea, setValue, newValue, selStart, selEnd = selStart) {
+  const scrollTop = textarea.scrollTop;
+  setValue(newValue);
+  requestAnimationFrame(() => {
+    textarea.focus({ preventScroll: true });
+    textarea.setSelectionRange(selStart, selEnd);
+    // Typing-style inserts at the very end should still follow the text down.
+    textarea.scrollTop = selEnd >= newValue.length ? textarea.scrollHeight : scrollTop;
+  });
+}
+
 // Wraps the current textarea selection with marker strings (or inserts an
 // empty pair and places the cursor between them if nothing is selected) —
 // the same interaction pattern as GitHub's markdown editor toolbar.
@@ -243,12 +261,8 @@ export function wrapSelection(textarea, value, setValue, before, after = before)
   const end = textarea.selectionEnd;
   const selected = value.slice(start, end);
   const newValue = value.slice(0, start) + before + selected + after + value.slice(end);
-  setValue(newValue);
-  requestAnimationFrame(() => {
-    textarea.focus();
-    const cursorStart = start + before.length;
-    textarea.setSelectionRange(cursorStart, cursorStart + selected.length);
-  });
+  const cursorStart = start + before.length;
+  applyEdit(textarea, setValue, newValue, cursorStart, cursorStart + selected.length);
 }
 
 // Prefixes every line touched by the current selection with the given
@@ -269,8 +283,8 @@ export function prefixLines(textarea, value, setValue, prefix) {
     .join('\n');
 
   const newValue = value.slice(0, lineStart) + newBlock + value.slice(lineEnd);
-  setValue(newValue);
-  requestAnimationFrame(() => textarea.focus());
+  // Keep the same lines selected, now including their markers.
+  applyEdit(textarea, setValue, newValue, lineStart, lineStart + newBlock.length);
 }
 
 // Inserts text at the current cursor position (or replaces the selection),
@@ -280,10 +294,5 @@ export function insertAtCursor(textarea, value, setValue, text) {
   const start = textarea.selectionStart;
   const end = textarea.selectionEnd;
   const newValue = value.slice(0, start) + text + value.slice(end);
-  setValue(newValue);
-  requestAnimationFrame(() => {
-    textarea.focus();
-    const cursor = start + text.length;
-    textarea.setSelectionRange(cursor, cursor);
-  });
+  applyEdit(textarea, setValue, newValue, start + text.length);
 }
