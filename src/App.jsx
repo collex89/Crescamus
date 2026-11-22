@@ -18,7 +18,13 @@ import { findVerseReferences, parseVerseQuery, searchBooks, getPostScriptureEmbe
 
 // A curated set for the composer's emoji picker — everyday expression plus
 // faith-relevant symbols, not the full unicode emoji set.
-const MAX_COMPOSER_VIDEO_BYTES = 50 * 1024 * 1024; // 50MB — generous for a short clip, cheap to fail fast on client rather than mid-upload
+const MAX_COMPOSER_VIDEO_BYTES = 50 * 1024 * 1024; // 50MB — Supabase's per-file upload limit on our plan; fail fast on the client rather than mid-upload
+const VIDEO_FILE_PATTERN = /\.(mp4|m4v|mov|webm|3gp|3g2|mkv)$/i;
+
+// Feed videos: "#t=0.1" makes iPhone Safari show the first frame as a
+// thumbnail (otherwise it's a black box until you press play), and
+// preload="metadata" means scrolling past a video doesn't download it.
+const feedVideoSrc = (url) => (url && !url.includes('#') ? `${url}#t=0.1` : url);
 const POST_MAX_LENGTH = 2000; // matches the posts.text check constraint (schema.sql) — shown live so a long post is never silently rejected at submit time
 const POST_EDIT_WINDOW_MS = 3 * 60 * 60 * 1000; // matches the RLS policy in migration 027 -- hiding "Edit Post" here is UX, not the actual enforcement, which happens at the database regardless of what this client does
 
@@ -371,6 +377,12 @@ const Icons = {
       <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
       <circle cx="8.5" cy="8.5" r="1.5"/>
       <polyline points="21 15 16 10 5 21"/>
+    </svg>
+  ),
+  Video: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="5" width="14" height="14" rx="2" ry="2"/>
+      <polygon points="22 8 16 12 22 16 22 8"/>
     </svg>
   ),
   MoreVertical: () => (
@@ -2506,7 +2518,7 @@ export default function App() {
           post.scriptureRef
         )}
       </div>
-      {post.video && <video src={post.video} className="feed-image" controls playsInline />}
+      {post.video && <video src={feedVideoSrc(post.video)} className="feed-image" controls playsInline preload="metadata" />}
       {post.image && <img src={post.image} className="feed-image" alt="post content" onClick={() => setActivePostId(post.id)} style={{ cursor: 'pointer' }} />}
 
       <div className="feed-actions">
@@ -2708,9 +2720,10 @@ export default function App() {
     const file = e.target.files?.[0];
     e.target.value = ''; // allow re-selecting the same file after removing it
     if (!file) return;
-    const isVideo = file.type.startsWith('video/');
+    // Some phones/PCs leave file.type empty for videos, so fall back to the extension.
+    const isVideo = file.type.startsWith('video/') || (!file.type && VIDEO_FILE_PATTERN.test(file.name));
     if (isVideo && file.size > MAX_COMPOSER_VIDEO_BYTES) {
-      setComposerError(`Video is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Max size is ${MAX_COMPOSER_VIDEO_BYTES / (1024 * 1024)}MB.`);
+      setComposerError(`That video is ${(file.size / (1024 * 1024)).toFixed(0)}MB, and videos can be up to ${MAX_COMPOSER_VIDEO_BYTES / (1024 * 1024)}MB (roughly 30 seconds to a minute on most phones). Trim it in your phone's Photos or Gallery app and try again.`);
       return;
     }
     setComposerError('');
@@ -4916,7 +4929,7 @@ export default function App() {
                     disabled={(!newPostText.trim() && !composerMedia) || newPostText.length > POST_MAX_LENGTH || composerPosting}
                     onClick={handleCreatePost}
                   >
-                    {composerPosting ? 'Posting...' : 'Post'}
+                    {composerPosting ? (composerMedia?.type === 'video' ? 'Uploading...' : 'Posting...') : 'Post'}
                   </button>
                 </div>
 
@@ -5076,8 +5089,17 @@ export default function App() {
                 <div className="composer-toolbar">
                   <label className="composer-attach-btn">
                     <Icons.Image />
-                    <input type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={handleComposerMediaChange} />
+                    <span>Photo</span>
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleComposerMediaChange} />
                   </label>
+                  <label className="composer-attach-btn">
+                    <Icons.Video />
+                    <span>Video</span>
+                    <input type="file" accept="video/*" style={{ display: 'none' }} onChange={handleComposerMediaChange} />
+                  </label>
+                  {composerMedia?.type === 'video' && composerPosting && (
+                    <span className="composer-upload-note">Uploading your video. Keep this screen open.</span>
+                  )}
                 </div>
               </div>
             )}
@@ -5504,7 +5526,7 @@ export default function App() {
                           detailPost.scriptureRef
                         )}
                       </div>
-                      {detailPost.video && <video src={detailPost.video} className="feed-image" controls playsInline />}
+                      {detailPost.video && <video src={feedVideoSrc(detailPost.video)} className="feed-image" controls playsInline preload="metadata" />}
                       {detailPost.image && (
                         <img
                           src={detailPost.image}
@@ -5959,7 +5981,7 @@ export default function App() {
                       {editPostText.length}/{POST_MAX_LENGTH}
                     </span>
                   </div>
-                  {editingPost.video && <video src={editingPost.video} className="feed-image" controls playsInline />}
+                  {editingPost.video && <video src={feedVideoSrc(editingPost.video)} className="feed-image" controls playsInline preload="metadata" />}
                   {editingPost.image && <img src={editingPost.image} className="feed-image" alt="post content" />}
                 </div>
               </div>
@@ -6004,7 +6026,7 @@ export default function App() {
                       </div>
                     </div>
                     <div className="feed-text">{renderFormattedText(quoteReshareTarget.text, openPersonProfile, navigateToVerse)}</div>
-                    {quoteReshareTarget.video && <video src={quoteReshareTarget.video} className="feed-image" controls playsInline />}
+                    {quoteReshareTarget.video && <video src={feedVideoSrc(quoteReshareTarget.video)} className="feed-image" controls playsInline preload="metadata" />}
                     {quoteReshareTarget.image && <img src={quoteReshareTarget.image} className="feed-image" alt="post content" />}
                   </div>
                 </div>

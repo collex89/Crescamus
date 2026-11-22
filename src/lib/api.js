@@ -439,10 +439,19 @@ export async function setMute(mutedId, userId, muted) {
 // post images/videos, so each upload gets its own unique filename. Same
 // bucket for both: its RLS policies (migration 004) are scoped by path, not
 // file type.
+const MEDIA_TYPES_BY_EXT = {
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp', heic: 'image/heic',
+  mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', '3gp': 'video/3gpp', '3g2': 'video/3gpp2', mkv: 'video/x-matroska',
+};
+
 export async function uploadPostMedia(userId, file) {
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
   const path = `${userId}/${Date.now()}.${ext}`;
-  const { error } = await supabase.storage.from('post-images').upload(path, file, { cacheControl: IMMUTABLE_MEDIA_CACHE_SECONDS });
+  // Pass the type explicitly: if the browser leaves file.type empty (some
+  // phones do for videos), storage would save it as text/plain and the
+  // video would refuse to play.
+  const contentType = file.type || MEDIA_TYPES_BY_EXT[ext] || 'application/octet-stream';
+  const { error } = await supabase.storage.from('post-images').upload(path, file, { cacheControl: IMMUTABLE_MEDIA_CACHE_SECONDS, contentType });
   if (error) return { url: null, error };
   const { data } = supabase.storage.from('post-images').getPublicUrl(path);
   return { url: data.publicUrl, error: null };
