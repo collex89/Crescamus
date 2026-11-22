@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   readInstallState,
+  writeInstallState,
   runningInstalled,
   canPromptInstall,
   promptInstall,
@@ -141,9 +142,23 @@ function instructionsFor(platform) {
   }
 }
 
-function InstallHelpSheet({ onClose }) {
+// `oneTap`: the browser is offering an install right now, so show a single
+// Install button (it has to be a tap -- browsers only open the install dialog
+// in response to one) instead of the manual steps.
+function InstallHelpSheet({ onClose, oneTap = false }) {
   const [copied, setCopied] = useState(false);
-  const help = instructionsFor(installPlatform());
+  const help = oneTap
+    ? {
+        title: 'Install Crescamus',
+        intro: 'Add Crescamus to your phone. It opens full screen like any other app, works offline, and sends your prayer reminders.',
+        steps: [],
+      }
+    : instructionsFor(installPlatform());
+
+  const install = async () => {
+    const outcome = await promptInstall();
+    if (outcome !== 'unavailable') onClose();
+  };
 
   const copyLink = async () => {
     try {
@@ -165,21 +180,26 @@ function InstallHelpSheet({ onClose }) {
         </div>
         <h3>{help.title}</h3>
         <p className="get-app-intro">{help.intro}</p>
-        <ol className="get-app-steps">
-          {help.steps.map((step, i) => (
-            <li key={i}><span className="get-app-step-num">{i + 1}</span><span>{step}</span></li>
-          ))}
-        </ol>
+        {help.steps.length > 0 && (
+          <ol className="get-app-steps">
+            {help.steps.map((step, i) => (
+              <li key={i}><span className="get-app-step-num">{i + 1}</span><span>{step}</span></li>
+            ))}
+          </ol>
+        )}
         <div className="get-app-sheet-actions">
-          {help.openInChrome && (
+          {oneTap && (
+            <button type="button" className="get-app-primary" onClick={install}>Install</button>
+          )}
+          {!oneTap && help.openInChrome && (
             <a className="get-app-primary" href={openInChromeHref()}>Open in Chrome</a>
           )}
-          {help.copyLink && (
+          {!oneTap && help.copyLink && (
             <button type="button" className={help.openInChrome ? 'get-app-secondary' : 'get-app-primary'} onClick={copyLink}>
               {copied ? 'Link copied' : 'Copy link'}
             </button>
           )}
-          {!help.openInChrome && !help.copyLink && (
+          {!oneTap && !help.openInChrome && !help.copyLink && (
             <button type="button" className="get-app-primary" onClick={onClose}>Got it</button>
           )}
         </div>
@@ -222,4 +242,32 @@ export default function GetAppButton({ variant = 'header' }) {
       {helpOpen && <InstallHelpSheet onClose={() => setHelpOpen(false)} />}
     </>
   );
+}
+
+// crescamus.app/install (or any page with ?install or #install) opens the
+// install sheet straight away -- the link to share in bios, posts and
+// messages. Chrome usually offers its install a moment after the page loads,
+// so the sheet starts on the manual steps and switches to the one-tap
+// Install button as soon as that offer arrives.
+function cameFromInstallLink() {
+  const { pathname, search, hash } = window.location;
+  return pathname.replace(/\/+$/, '') === '/install' || new URLSearchParams(search).has('install') || hash === '#install';
+}
+
+export function InstallLinkSheet({ enabled }) {
+  const [open, setOpen] = useState(() => typeof window !== 'undefined' && cameFromInstallLink());
+  useInstallEvents();
+
+  useEffect(() => {
+    if (!open) return;
+    // Tidy the address back to the home page, so a reload or a later
+    // bookmark doesn't pop the sheet up again.
+    window.history.replaceState(null, '', '/');
+    // Keep the occasional install card from also appearing a few seconds
+    // later (without counting this as a "Not now").
+    writeInstallState({ ...readInstallState(), dismissedAt: Date.now() });
+  }, [open]);
+
+  if (!enabled || !open || runningInstalled()) return null;
+  return <InstallHelpSheet oneTap={canPromptInstall()} onClose={() => setOpen(false)} />;
 }
